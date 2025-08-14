@@ -1,0 +1,54 @@
+{
+  "name": "nutriai-oracle",
+  "version": "1.0.0",
+  "description": "AI-Powered Nutrition Assistant",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "nodemon server/index.js",
+    "client": "cd client && npm start",
+    "build": "cd client && npm run build",
+    "install-all": "npm install && cd client && npm install",
+    "start": "node server/index.js"
+  },
+  "keywords": [
+    "nutrition",
+    "ai",
+    "health",
+    "diet",
+    "meal-planning",
+    "image-recognition"
+  ],
+  "author": "NutriAI Team",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.11.0",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-rate-limit": "^8.0.1",
+    "express-validator": "^7.2.1",
+    "helmet": "^8.1.0",
+    "hpp": "^0.2.3",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.1",
+    "multer": "^2.0.2",
+    "openai": "^5.12.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-router": "^7.8.0",
+    "react-scripts": "^5.0.1",
+    "sharp": "^0.34.3",
+    "sqlite3": "^5.1.7",
+    "uuid": "^11.1.0",
+    "winston": "^3.17.0",
+    "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "nodemon": "^3.1.10",
+    "npm-check-updates": "^18.0.2"
+  }
+}

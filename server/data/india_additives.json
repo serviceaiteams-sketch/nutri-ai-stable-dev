@@ -1,0 +1,58 @@
+[
+  {
+    "name": "hydrogenated vegetable oil",
+    "aliases": ["vanaspati", "hydrogenated oil", "hydrogenated vegetable fat"],
+    "level": "red",
+    "severity": 25,
+    "short": "Trans-fat source; strongly discourage"
+  },
+  {
+    "name": "butylated hydroxyanisole",
+    "aliases": ["bha", "e320"],
+    "level": "amber",
+    "severity": 8,
+    "short": "Synthetic antioxidant; limit intake"
+  },
+  {
+    "name": "butylated hydroxytoluene",
+    "aliases": ["bht", "e321"],
+    "level": "amber",
+    "severity": 8,
+    "short": "Synthetic antioxidant; limit intake"
+  },
+  {
+    "name": "tbhq",
+    "aliases": ["tertiary butylhydroquinone", "e319"],
+    "level": "amber",
+    "severity": 8,
+    "short": "Antioxidant often in fried snacks"
+  },
+  {
+    "name": "acesulfame k",
+    "aliases": ["acesulfame potassium", "e950"],
+    "level": "amber",
+    "severity": 6,
+    "short": "Artificial sweetener; prefer moderation"
+  },
+  {
+    "name": "aspartame",
+    "aliases": ["e951"],
+    "level": "amber",
+    "severity": 6,
+    "short": "Artificial sweetener; limit if sensitive"
+  },
+  {
+    "name": "palmolein",
+    "aliases": ["palm oil", "refined palm oil"],
+    "level": "amber",
+    "severity": 7,
+    "short": "Refined palm oil; prefer better oils"
+  },
+  {
+    "name": "sodium benzoate",
+    "aliases": ["e211"],
+    "level": "amber",
+    "severity": 5,
+    "short": "Preservative; limit in beverages"
+  }
+] 

@@ -1,0 +1,41 @@
+[
+  {
+    "id": 1,
+    "gtin": "8901063011080",
+    "brand": "Parle",
+    "name": "Parle-G Biscuits",
+    "variant": "Classic",
+    "category": "biscuits",
+    "veg_mark": true,
+    "per": 100,
+    "nutrition": { "energy": 450, "protein": 6, "fat": 12, "sat_fat": 5, "trans_fat": 0, "carbs": 78, "sugar": 24, "sodium": 350, "fiber": 2 },
+    "ingredients_raw": "Wheat flour, sugar, edible vegetable oil (palmolein), milk solids, raising agents (INS 500, INS 503), salt, emulsifiers (INS 322), added flavours (artificial)",
+    "last_updated": "2025-08-04T00:00:00.000Z"
+  },
+  {
+    "id": 2,
+    "gtin": "8901491100509",
+    "brand": "Aashirvaad",
+    "name": "Whole Wheat Atta",
+    "variant": "Chakki Fresh",
+    "category": "staples",
+    "veg_mark": true,
+    "per": 100,
+    "nutrition": { "energy": 364, "protein": 12, "fat": 2.5, "sat_fat": 0.5, "trans_fat": 0, "carbs": 72, "sugar": 1.2, "sodium": 5, "fiber": 12 },
+    "ingredients_raw": "Whole wheat",
+    "last_updated": "2025-08-04T00:00:00.000Z"
+  },
+  {
+    "id": 3,
+    "gtin": "8901764021320",
+    "brand": "Paper Boat",
+    "name": "Aam Panna Drink",
+    "variant": "Beverage",
+    "category": "soft drink",
+    "veg_mark": true,
+    "per": 100,
+    "nutrition": { "energy": 55, "protein": 0, "fat": 0, "sat_fat": 0, "trans_fat": 0, "carbs": 13.5, "sugar": 12.5, "sodium": 50, "fiber": 0 },
+    "ingredients_raw": "Water, sugar, mango pulp, acidity regulator (INS 330), salt, spices, stabilizer (INS 415)",
+    "last_updated": "2025-08-04T00:00:00.000Z"
+  }
+] 

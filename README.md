@@ -230,4 +230,4 @@ For support, email support@nutriai-oracle.com or create an issue in the reposito
 
 ---
 
-**NutriAI Oracle** - Empowering healthier choices through AI-powered nutrition assistance. 
+**NutriAI Oracle** - Empowering healthier choices through AI-powered nutrition assistance.

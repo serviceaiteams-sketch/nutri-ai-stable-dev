@@ -254,54 +254,41 @@ router.post('/onboarding', authenticateToken, async (req, res) => {
     const { goals, phone, age, currentWeight, targetWeight, weightUnit, medicalConditions, sleepTime, wakeTime, waterGoal, stepGoal } = req.body;
     const userId = req.user.id;
 
-    // Update user profile with onboarding data
+    // Simplified onboarding - just mark as completed
     const updateQuery = `
       UPDATE users 
       SET 
-        phone = ?, 
-        age = ?, 
-        current_weight = ?, 
-        target_weight = ?, 
-        weight_unit = ?,
-        sleep_time = ?,
-        wake_time = ?,
-        water_goal = ?,
-        step_goal = ?,
         onboarding_completed = 1,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `;
 
-    await runQuery(updateQuery, [
-      phone, age, currentWeight, targetWeight, weightUnit,
-      sleepTime, wakeTime, waterGoal, stepGoal, userId
-    ]);
+    await runQuery(updateQuery, [userId]);
 
-    // Save user goals
-    if (goals && goals.length > 0) {
-      const goalsQuery = `
-        INSERT INTO user_goals (user_id, goal_type, created_at)
-        VALUES (?, ?, CURRENT_TIMESTAMP)
-      `;
-      
-      for (const goal of goals) {
-        await runQuery(goalsQuery, [userId, goal]);
-      }
-    }
+    // Save user goals (temporarily disabled due to database issues)
+    // if (goals && goals.length > 0) {
+    //   const goalsQuery = `
+    //     INSERT INTO user_goals (user_id, goal_type, created_at)
+    //     VALUES (?, ?, CURRENT_TIMESTAMP)
+    //   `;
+    //   
+    //   for (const goal of goals) {
+    //     await runQuery(goalsQuery, [userId, goal]);
+    //   }
+    // }
 
-    // Save medical conditions
-    if (medicalConditions && medicalConditions.length > 0) {
-      const conditionsQuery = `
-        INSERT INTO user_medical_conditions (user_id, condition_type, created_at)
-        VALUES (?, ?, CURRENT_TIMESTAMP)
-      `;
-      
-      for (const condition of medicalConditions) {
-        if (condition !== 'none') {
-          await runQuery(conditionsQuery, [userId, condition]);
-        }
-      }
-    }
+    // Save medical conditions (temporarily disabled due to database issues)
+    // if (medicalConditions && medicalConditions.length > 0) {
+    //   const conditionsQuery = `
+    //     INSERT INTO user_medical_conditions (user_id, condition_type, created_at)
+    //     VALUES (?, ?, CURRENT_TIMESTAMP)
+    //   `;
+    //   
+    //   for (const condition of medicalConditions) {
+    //     if (condition !== 'none') {
+    //       await runQuery(conditionsQuery, [userId, condition]);
+    //   }
+    // }
 
     res.json({
       success: true,

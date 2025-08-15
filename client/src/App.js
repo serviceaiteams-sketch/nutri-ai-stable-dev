@@ -14,7 +14,7 @@ import WorkoutRecommendations from './components/WorkoutRecommendations';
 import HealthWarnings from './components/HealthWarnings';
 // import Profile from './components/Profile';
 import Loading from './components/Loading';
-import Onboarding from './components/Onboarding';
+// import Onboarding from './components/Onboarding'; // Removed onboarding requirement
 import AIAssistant from './components/AIAssistant';
 import Settings from './components/Settings';
 import AdvancedFeaturesPage from './components/AdvancedFeaturesPage';
@@ -48,24 +48,9 @@ function App() {
 
 function AppContent() {
   const { user, loading } = useAuth();
-  const [showOnboarding, setShowOnboarding] = React.useState(false);
-  const [onboardingComplete, setOnboardingComplete] = React.useState(false);
-
-  // Check if user has completed onboarding
-  React.useEffect(() => {
-    const hasCompletedOnboarding = localStorage.getItem('onboardingComplete');
-    if (user && !hasCompletedOnboarding) {
-      setShowOnboarding(true);
-    }
-  }, [user]);
 
   if (loading) {
     return <Loading />;
-  }
-
-  // Show onboarding if user is logged in but hasn't completed onboarding
-  if (user && showOnboarding && !onboardingComplete) {
-    return <Onboarding />;
   }
 
   return (

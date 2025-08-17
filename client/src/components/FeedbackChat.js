@@ -134,12 +134,18 @@ export default function FeedbackChat() {
             exit={{ opacity: 0, y: 20 }}
             className="w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
           >
-            <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white">
-              <div className="flex items-center justify-between p-3">
+            <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white relative">
+              {/* Close button in top-right corner */}
+              <button 
+                onClick={() => setOpen(false)} 
+                className="absolute top-3 right-3 p-2 hover:bg-white/20 rounded-full transition-all duration-200 hover:scale-110 z-10"
+                title="Close chat"
+              >
+                <FaTimes className="text-lg text-white" />
+              </button>
+              
+              <div className="flex items-center justify-between p-3 pr-14">
                 <div className="font-semibold text-sm">Feedback & Requests</div>
-                <button onClick={() => setOpen(false)} className="p-1 hover:bg-white/10 rounded">
-                  <FaTimes />
-                </button>
               </div>
               <div className="px-3 pb-2 flex space-x-2 text-xs">
                 <button onClick={() => setTab('request')} className={`px-2 py-1 rounded ${tab==='request'?'bg-white/20':''}`}>Request</button>
@@ -149,7 +155,7 @@ export default function FeedbackChat() {
 
             {tab === 'chat' && (
               <>
-                <div ref={listRef} className="max-h-80 overflow-y-auto p-3 space-y-2 bg-gray-50">
+                <div ref={listRef} className="max-h-40 overflow-y-auto p-3 space-y-2 bg-gray-50">
                   {(messages || []).map(m => (
                     <div key={m.id} className={`text-sm ${m.sender === 'user' ? 'text-gray-800' : 'text-teal-700'}`}>
                       <span className={`inline-block px-3 py-2 rounded-xl ${m.sender === 'user' ? 'bg-white border border-gray-200' : 'bg-emerald-50 border border-emerald-200'}`}>
@@ -197,17 +203,7 @@ export default function FeedbackChat() {
                     <option value="critical">critical</option>
                   </select>
                 </div>
-                <div>
-                  <div className="text-xs text-gray-600 mb-1">Tags</div>
-                  <div className="flex flex-wrap gap-1">
-                    {TAGS.map(t => (
-                      <button key={t} type="button" onClick={() => setForm(f=> ({...f, tags: f.tags.includes(t) ? f.tags.filter(x=>x!==t) : [...f.tags, t]}))}
-                        className={`px-2 py-1 rounded-full text-xs border ${form.tags.includes(t)?'bg-emerald-100 border-emerald-300 text-emerald-800':'bg-white border-gray-200 text-gray-700'}`}>
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                {/* Tags section removed to save space */}
                 <textarea className="w-full px-3 py-2 border rounded-lg text-sm" rows={3} placeholder="Details (examples, screenshots, flow)"
                   value={form.details} onChange={e=>setForm({...form, details:e.target.value})} />
                 <button onClick={submitStructured} disabled={savingRequest || !form.title.trim()}

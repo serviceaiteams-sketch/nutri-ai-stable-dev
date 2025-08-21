@@ -228,3 +228,4 @@ The project includes comprehensive documentation:
 **Repository**: https://github.com/vamsipriya9090/NutriAI_Stable.git
 **Last Updated**: December 2024
 **Version**: 1.0.0 Stable
+

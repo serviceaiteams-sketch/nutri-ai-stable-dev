@@ -111,3 +111,4 @@ cd client && npm start
 2. You have proper authentication set up
 3. You have write permissions to the repository
 4. The repository name matches exactly: `NutriAI_Stable`
+

@@ -11,7 +11,11 @@ import {
   FaCog,
   FaBell,
   FaShieldAlt,
-  
+  FaChartLine,
+  FaCalendarAlt,
+  FaTrophy,
+  FaAppleAlt,
+  FaHeart
 } from 'react-icons/fa';
 import AIAssistantButton from './AIAssistantButton';
 import ViewModeToggle from './ViewModeToggle';
@@ -23,7 +27,11 @@ const Navbar = () => {
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: FaHome },
-    // { name: 'Profile', href: '/profile', icon: FaUser },
+    { name: 'Food Recognition', href: '/food-recognition', icon: FaAppleAlt },
+    { name: 'Meal Planning', href: '/meal-planning', icon: FaCalendarAlt },
+    { name: 'Analytics', href: '/analytics', icon: FaChartLine },
+    { name: 'Gamification', href: '/gamification', icon: FaTrophy },
+    { name: 'Health Analysis', href: '/health-analysis', icon: FaHeart },
     { name: 'Settings', href: '/settings', icon: FaCog },
     { name: 'Addiction Control', href: '/addiction', icon: FaShieldAlt },
   ];

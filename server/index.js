@@ -31,6 +31,9 @@ const enhancedMoodAnalysisRoutes = require('./routes/enhanced-mood-analysis');
 
 // Import health analysis routes
 const healthAnalysisRoutes = require('./routes/health-analysis');
+const analyticsRoutes = require('./routes/analytics');
+const notificationsRoutes = require('./routes/notifications');
+const gamificationRoutes = require('./routes/gamification');
 
 // Import sleep tracking routes
 const sleepTrackingRoutes = require('./routes/sleep-tracking');
@@ -44,7 +47,7 @@ const addictionRoutes = require('./routes/addiction');
 const app = express();
 // Trust proxy for correct client IPs in rate limiting and logging
 // app.set('trust proxy', true); // Commented out due to rate limiting compatibility issues
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Security middleware temporarily simplified due to Express 5 compatibility issues
 app.use(helmet());
@@ -114,7 +117,10 @@ app.use('/api/enhanced-mood-analysis', enhancedMoodAnalysisRoutes);
 // Use health analysis routes
 // Register health-approved BEFORE /api/health to avoid prefix collisions
 app.use('/api/health-approved', healthApprovedRoutes);
-app.use('/api/health', healthAnalysisRoutes);
+app.use('/api/health-analysis', healthAnalysisRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/gamification', gamificationRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/addiction', addictionRoutes);
 

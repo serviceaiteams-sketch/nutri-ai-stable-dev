@@ -19,7 +19,8 @@ import {
   FaSeedling,
   FaFire,
   FaHeart,
-  FaMagic
+  FaMagic,
+  FaAppleAlt
 } from 'react-icons/fa';
 
 const FoodRecognition = () => {
@@ -28,8 +29,10 @@ const FoodRecognition = () => {
   const [uploadedImage, setUploadedImage] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState('upload'); // upload, analyzing, results, no_food
+  const [step, setStep] = useState('upload'); // upload, analyzing, results, no_food, recommendations, health-indicators
   const [mealType, setMealType] = useState('lunch');
+  const [smartRecommendations, setSmartRecommendations] = useState(null);
+  const [healthIndicators, setHealthIndicators] = useState(null);
 
   // Format any numeric value to 1 decimal place for UI
   const fmt = (n) => Number.parseFloat(n ?? 0).toFixed(1);
@@ -135,15 +138,28 @@ const FoodRecognition = () => {
 
       // Include Authorization header if token present
       const token = localStorage.getItem('token');
-      await axios.post('/api/meals/log', mealData, {
+      const response = await axios.post('/api/meals/log', mealData, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
+      
       toast.success('Meal logged successfully!');
-      setStep('upload');
-      setAnalysisResult(null);
-      setUploadedImage(null);
-      // take user to Meal Tracking for the same day to view the entry immediately
-      navigate(`/meal-tracking?date=${mealData.date}`);
+      
+      // Show health indicators first if available
+      if (response.data.healthIndicators) {
+        setHealthIndicators(response.data.healthIndicators);
+        setStep('health-indicators');
+      }
+      // Show smart recommendations if available (after health indicators)
+      else if (response.data.recommendations) {
+        setSmartRecommendations(response.data.recommendations);
+        setStep('recommendations');
+      } else {
+        setStep('upload');
+        setAnalysisResult(null);
+        setUploadedImage(null);
+        // take user to Meal Tracking for the same day to view the entry immediately
+        navigate(`/meal-tracking?date=${mealData.date}`);
+      }
     } catch (error) {
       console.error('Error logging meal:', error);
       toast.error('Failed to log meal. Please try again.');
@@ -392,6 +408,335 @@ const FoodRecognition = () => {
                     <span className="text-gray-700">Health Insights</span>
                   </div>
                 </div>
+              </motion.div>
+            </motion.div>
+          )}
+
+          {step === 'health-indicators' && healthIndicators && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+                className={`border-2 rounded-2xl p-6 ${
+                  healthIndicators.overallHealth === 'good' 
+                    ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200' 
+                    : healthIndicators.overallHealth === 'warning'
+                    ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200'
+                    : 'bg-gradient-to-br from-red-50 to-pink-50 border-red-200'
+                }`}
+              >
+                <div className="flex items-center justify-center mb-4">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.2, type: "spring" }}
+                    className={`p-3 rounded-full mr-3 ${
+                      healthIndicators.overallHealth === 'good' 
+                        ? 'bg-gradient-to-r from-green-400 to-emerald-500' 
+                        : healthIndicators.overallHealth === 'warning'
+                        ? 'bg-gradient-to-r from-yellow-400 to-orange-500'
+                        : 'bg-gradient-to-r from-red-400 to-pink-500'
+                    }`}
+                  >
+                    {healthIndicators.overallHealth === 'good' ? (
+                      <FaCheckCircle className="text-white text-2xl" />
+                    ) : healthIndicators.overallHealth === 'warning' ? (
+                      <FaExclamationTriangle className="text-white text-2xl" />
+                    ) : (
+                      <FaExclamationTriangle className="text-white text-2xl" />
+                    )}
+                  </motion.div>
+                  <h3 className="text-2xl font-bold text-gray-800">
+                    Health Analysis Results
+                  </h3>
+                </div>
+
+                {/* Overall Health Status */}
+                <div className="text-center mb-6">
+                  <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
+                    healthIndicators.overallHealth === 'good' 
+                      ? 'bg-green-100 text-green-800' 
+                      : healthIndicators.overallHealth === 'warning'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {healthIndicators.overallHealth === 'good' ? (
+                      <>
+                        <FaCheckCircle className="mr-2" />
+                        Overall Health: Good
+                      </>
+                    ) : healthIndicators.overallHealth === 'warning' ? (
+                      <>
+                        <FaExclamationTriangle className="mr-2" />
+                        Overall Health: Warning
+                      </>
+                    ) : (
+                      <>
+                        <FaExclamationTriangle className="mr-2" />
+                        Overall Health: Poor
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Food Health Indicators */}
+                {healthIndicators.indicators && healthIndicators.indicators.length > 0 && (
+                  <div className="space-y-4 mb-6">
+                    <h4 className="text-lg font-semibold text-gray-800">Food Analysis</h4>
+                    {healthIndicators.indicators.map((indicator, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 * index }}
+                        className={`bg-white rounded-xl p-4 shadow-sm border ${
+                          indicator.status === 'good' 
+                            ? 'border-green-200' 
+                            : indicator.status === 'warning'
+                            ? 'border-yellow-200'
+                            : 'border-red-200'
+                        }`}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className={`p-2 rounded-full ${
+                            indicator.status === 'good' 
+                              ? 'bg-green-100' 
+                              : indicator.status === 'warning'
+                              ? 'bg-yellow-100'
+                              : 'bg-red-100'
+                          }`}>
+                            {indicator.status === 'good' ? (
+                              <FaCheckCircle className="text-green-600" />
+                            ) : indicator.status === 'warning' ? (
+                              <FaExclamationTriangle className="text-yellow-600" />
+                            ) : (
+                              <FaExclamationTriangle className="text-red-600" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <h5 className="font-medium text-gray-800">{indicator.foodName}</h5>
+                            <p className="text-sm text-gray-600 mt-1">{indicator.reason}</p>
+                            {indicator.condition && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                <strong>Affects:</strong> {indicator.condition}
+                              </p>
+                            )}
+                            {indicator.suggestion && (
+                              <p className="text-sm text-blue-600 mt-2">
+                                <strong>Suggestion:</strong> {indicator.suggestion}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Warnings */}
+                {healthIndicators.warnings && healthIndicators.warnings.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4"
+                  >
+                    <h4 className="font-semibold text-gray-800 mb-2 flex items-center">
+                      <FaExclamationTriangle className="text-yellow-600 mr-2" />
+                      Warnings
+                    </h4>
+                    <ul className="list-disc ml-5 space-y-1">
+                      {healthIndicators.warnings.map((warning, index) => (
+                        <li key={index} className="text-gray-700">{warning}</li>
+                      ))}
+                    </ul>
+                  </motion.div>
+                )}
+
+                {/* Recommendations */}
+                {healthIndicators.recommendations && healthIndicators.recommendations.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4"
+                  >
+                    <h4 className="font-semibold text-gray-800 mb-2 flex items-center">
+                      <FaHeart className="text-blue-600 mr-2" />
+                      Recommendations
+                    </h4>
+                    <ul className="list-disc ml-5 space-y-1">
+                      {healthIndicators.recommendations.map((rec, index) => (
+                        <li key={index} className="text-gray-700">{rec}</li>
+                      ))}
+                    </ul>
+                  </motion.div>
+                )}
+
+                <motion.div 
+                  className="flex flex-col md:flex-row items-stretch gap-3 pt-6"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6 }}
+                >
+                  <motion.button
+                    onClick={() => {
+                      setStep('recommendations');
+                    }}
+                    className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold hover:from-blue-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg"
+                  >
+                    View Smart Recommendations
+                  </motion.button>
+                  <motion.button
+                    onClick={() => {
+                      setStep('upload');
+                      setAnalysisResult(null);
+                      setUploadedImage(null);
+                      setHealthIndicators(null);
+                      setSmartRecommendations(null);
+                    }}
+                    className="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 text-white py-3 px-6 rounded-xl font-semibold hover:from-gray-600 hover:to-gray-700 transition-all transform hover:scale-105 shadow-lg"
+                  >
+                    Analyze Another Meal
+                  </motion.button>
+                </motion.div>
+              </motion.div>
+            </motion.div>
+          )}
+
+          {step === 'recommendations' && smartRecommendations && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+                className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-6"
+              >
+                <div className="flex items-center justify-center mb-4">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.2, type: "spring" }}
+                    className="bg-gradient-to-r from-blue-400 to-indigo-500 p-3 rounded-full mr-3"
+                  >
+                    <FaAppleAlt className="text-white text-2xl" />
+                  </motion.div>
+                  <h3 className="text-2xl font-bold text-gray-800">
+                    Smart Food Recommendations! 🍎
+                  </h3>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Next Meal Suggestions */}
+                  {smartRecommendations.nextMealSuggestions?.map((suggestion, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1 * index }}
+                      className="bg-white rounded-xl p-4 shadow-sm border border-blue-100"
+                    >
+                      <h4 className="font-semibold text-gray-800 mb-3 capitalize">{suggestion.mealType} Suggestions</h4>
+                      <div className="space-y-2">
+                        {suggestion.foods?.map((food, foodIndex) => (
+                          <div key={foodIndex} className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
+                            <FaAppleAlt className="text-blue-500 mt-1 flex-shrink-0" />
+                            <div className="flex-1">
+                              <h5 className="font-medium text-gray-800">{food.name}</h5>
+                              <p className="text-sm text-gray-600 mt-1">{food.reason}</p>
+                              <div className="flex justify-between text-xs text-gray-500 mt-2">
+                                <span>Portion: {food.portion}</span>
+                                <span>Benefit: {food.nutritionalBenefit}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  ))}
+
+                  {/* Nutritional Gaps */}
+                  {smartRecommendations.nutritionalGaps?.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="bg-yellow-50 border border-yellow-200 rounded-xl p-4"
+                    >
+                      <h4 className="font-semibold text-gray-800 mb-2">Nutritional Gaps to Address</h4>
+                      <ul className="list-disc ml-5 space-y-1">
+                        {smartRecommendations.nutritionalGaps.map((gap, index) => (
+                          <li key={index} className="text-gray-700">{gap}</li>
+                        ))}
+                      </ul>
+                    </motion.div>
+                  )}
+
+                  {/* Health Tips */}
+                  {smartRecommendations.healthTips?.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.4 }}
+                      className="bg-green-50 border border-green-200 rounded-xl p-4"
+                    >
+                      <h4 className="font-semibold text-gray-800 mb-2">Health Tips</h4>
+                      <ul className="list-disc ml-5 space-y-1">
+                        {smartRecommendations.healthTips.map((tip, index) => (
+                          <li key={index} className="text-gray-700">{tip}</li>
+                        ))}
+                      </ul>
+                    </motion.div>
+                  )}
+
+                  {/* Timing */}
+                  {smartRecommendations.timing && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.5 }}
+                      className="bg-purple-50 border border-purple-200 rounded-xl p-4"
+                    >
+                      <h4 className="font-semibold text-gray-800 mb-2">Recommended Timing</h4>
+                      <p className="text-gray-700">{smartRecommendations.timing}</p>
+                    </motion.div>
+                  )}
+                </div>
+              </motion.div>
+
+              <motion.div 
+                className="flex flex-col md:flex-row items-stretch gap-3 pt-6"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+              >
+                                  <motion.button
+                    onClick={() => {
+                      setStep('upload');
+                      setAnalysisResult(null);
+                      setUploadedImage(null);
+                      setSmartRecommendations(null);
+                      setHealthIndicators(null);
+                    }}
+                    className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg"
+                  >
+                    Analyze Another Meal
+                  </motion.button>
+                <motion.button
+                  onClick={() => navigate('/meal-tracking')}
+                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 px-6 rounded-xl font-semibold hover:from-green-600 hover:to-emerald-700 transition-all transform hover:scale-105 shadow-lg"
+                >
+                  View Meal Tracking
+                </motion.button>
               </motion.div>
             </motion.div>
           )}

@@ -131,6 +131,7 @@ async function initializeTables() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         meal_type TEXT NOT NULL,
+        image_url TEXT,
         total_calories REAL DEFAULT 0,
         total_protein REAL DEFAULT 0,
         total_carbs REAL DEFAULT 0,
@@ -138,6 +139,7 @@ async function initializeTables() {
         total_sugar REAL DEFAULT 0,
         total_sodium REAL DEFAULT 0,
         total_fiber REAL DEFAULT 0,
+        is_healthy BOOLEAN DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id)
       )
@@ -148,7 +150,7 @@ async function initializeTables() {
       CREATE TABLE IF NOT EXISTS food_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         meal_id INTEGER NOT NULL,
-        name TEXT NOT NULL,
+        food_name TEXT NOT NULL,
         quantity REAL NOT NULL,
         unit TEXT NOT NULL,
         calories REAL DEFAULT 0,
@@ -164,6 +166,40 @@ async function initializeTables() {
         FOREIGN KEY (meal_id) REFERENCES meals (id)
       )
     `);
+
+    // Migration: Add missing columns to existing tables
+    try {
+      // Check if meals table has image_url column
+      const mealsColumns = await getAll("PRAGMA table_info(meals)");
+      const hasImageUrl = mealsColumns.some(c => c.name === 'image_url');
+      if (!hasImageUrl) {
+        await runQuery('ALTER TABLE meals ADD COLUMN image_url TEXT');
+        console.log('🛠️ Added missing meals.image_url column');
+      }
+      
+      const hasIsHealthy = mealsColumns.some(c => c.name === 'is_healthy');
+      if (!hasIsHealthy) {
+        await runQuery('ALTER TABLE meals ADD COLUMN is_healthy BOOLEAN DEFAULT 1');
+        console.log('🛠️ Added missing meals.is_healthy column');
+      }
+
+      // Check if food_items table has food_name column (migrate from 'name' if needed)
+      const foodItemsColumns = await getAll("PRAGMA table_info(food_items)");
+      const hasFoodName = foodItemsColumns.some(c => c.name === 'food_name');
+      const hasName = foodItemsColumns.some(c => c.name === 'name');
+      
+      if (!hasFoodName && hasName) {
+        // Rename 'name' column to 'food_name'
+        await runQuery('ALTER TABLE food_items RENAME COLUMN name TO food_name');
+        console.log('🛠️ Renamed food_items.name to food_items.food_name');
+      } else if (!hasFoodName && !hasName) {
+        // Add food_name column if neither exists
+        await runQuery('ALTER TABLE food_items ADD COLUMN food_name TEXT NOT NULL DEFAULT ""');
+        console.log('🛠️ Added missing food_items.food_name column');
+      }
+    } catch (error) {
+      console.log('Migration completed (some columns may already exist)');
+    }
 
     // Workouts table (recommendations and logged sessions)
     await runQuery(`

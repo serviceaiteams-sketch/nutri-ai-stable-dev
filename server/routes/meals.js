@@ -107,12 +107,20 @@ router.post('/log', authenticateToken, [
       [mealResult.id]
     );
 
+    // Generate smart food recommendations based on the logged meal
+    const smartRecommendations = await generateSmartFoodRecommendations(userId, food_items, meal_type);
+    
+    // Analyze food health indicators based on user's health conditions
+    const healthIndicators = await analyzeFoodHealthIndicators(userId, food_items);
+
     res.status(201).json({
       message: 'Meal logged successfully',
       meal: {
         ...meal,
         food_items: foodItems
-      }
+      },
+      recommendations: smartRecommendations,
+      healthIndicators: healthIndicators
     });
 
   } catch (error) {
@@ -451,6 +459,206 @@ function calculateTotalNutrition(foodItems) {
 
   console.log('Final total nutrition:', total);
   return total;
+}
+
+// Analyze food health indicators based on user's health conditions
+async function analyzeFoodHealthIndicators(userId, loggedFoods) {
+  try {
+    const conditions = await getAll(
+      'SELECT * FROM health_conditions WHERE user_id = ?',
+      [userId]
+    );
+
+    if (conditions.length === 0) {
+      return {
+        overallHealth: 'good',
+        indicators: [],
+        warnings: [],
+        recommendations: []
+      };
+    }
+
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_API_KEY) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    const axios = require('axios');
+    
+    const prompt = `You are an expert nutritionist analyzing food choices for health conditions. Analyze the logged foods against the user's health conditions.
+
+USER HEALTH CONDITIONS:
+${conditions.map(c => `- ${c.condition_name} (${c.severity || 'mild'})`).join('\n')}
+
+LOGGED FOODS:
+${loggedFoods.map(f => `- ${f.name} (${f.calories || 0} cal, ${f.protein || 0}g protein, ${f.carbs || 0}g carbs, ${f.fat || 0}g fat, ${f.sugar || 0}g sugar, ${f.sodium || 0}mg sodium, ${f.fiber || 0}g fiber)`).join('\n')}
+
+TASK: Analyze each food item and provide health indicators based on the user's conditions.
+
+IMPORTANT GUIDELINES:
+1. For each food, determine if it's GOOD (green tick), WARNING (yellow), or BAD (red) for their health conditions
+2. Consider nutritional content and how it affects their specific conditions
+3. Be conservative - when in doubt, mark as warning
+4. Provide specific reasons for each indicator
+5. Suggest alternatives for problematic foods
+
+Return STRICT JSON in this exact schema (no prose outside JSON):
+{
+  "overallHealth": "good|warning|poor",
+  "indicators": [
+    {
+      "foodName": "food name",
+      "status": "good|warning|poor",
+      "reason": "specific reason for this status",
+      "condition": "health condition this affects",
+      "suggestion": "alternative food or portion adjustment"
+    }
+  ],
+  "warnings": [
+    "general warning about the meal"
+  ],
+  "recommendations": [
+    "specific recommendation for improvement"
+  ]
+}`;
+
+    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 1000,
+      temperature: 0.2
+    }, {
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const content = response.data.choices[0].message.content;
+    return JSON.parse(content);
+    
+  } catch (error) {
+    console.error('Food health indicator analysis failed:', error);
+    return {
+      overallHealth: 'good',
+      indicators: [],
+      warnings: [],
+      recommendations: []
+    };
+  }
+}
+
+// Generate smart food recommendations based on logged meal
+async function generateSmartFoodRecommendations(userId, loggedFoods, mealType) {
+  try {
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_API_KEY) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    const axios = require('axios');
+    
+    // Get user's health conditions and recent meals
+    const conditions = await getAll(
+      'SELECT * FROM health_conditions WHERE user_id = ?',
+      [userId]
+    );
+
+    const recentMeals = await getAll(
+      `SELECT m.meal_type, fi.food_name, fi.calories, fi.protein, fi.carbs, fi.fat, fi.sugar, fi.sodium, fi.fiber
+       FROM meals m
+       JOIN food_items fi ON m.id = fi.meal_id
+       WHERE m.user_id = ? 
+       AND datetime(m.created_at) >= datetime('now', '-7 days')
+       ORDER BY m.created_at DESC
+       LIMIT 20`,
+      [userId]
+    );
+
+    const prompt = `You are an expert nutritionist providing smart food recommendations. Based on the user's logged meal and health context, suggest what they should eat next.
+
+USER CONTEXT:
+- Health Conditions: ${conditions.map(c => `${c.condition_name} (${c.severity || 'mild'})`).join(', ') || 'None specified'}
+- Current Meal Type: ${mealType}
+- Just Logged Foods: ${loggedFoods.map(f => `${f.name} (${f.calories || 0} cal, ${f.protein || 0}g protein, ${f.carbs || 0}g carbs)`).join(', ')}
+- Recent Meals (last 7 days): ${recentMeals.map(m => `${m.meal_type}: ${m.food_name}`).join(', ')}
+
+TASK: Provide smart food recommendations for the next meal or snack based on:
+1. What they just ate (nutritional gaps)
+2. Their health conditions
+3. Recent eating patterns
+4. Optimal meal timing and balance
+
+IMPORTANT GUIDELINES:
+1. Suggest specific foods, not just categories
+2. Consider nutritional balance and gaps
+3. Account for health conditions
+4. Provide practical, easy-to-find foods
+5. Include portion suggestions
+6. Explain why each recommendation is beneficial
+
+Return STRICT JSON in this exact schema (no prose outside JSON):
+{
+  "nextMealSuggestions": [
+    {
+      "mealType": "breakfast/lunch/dinner/snack",
+      "foods": [
+        {
+          "name": "specific food name",
+          "reason": "why this food is recommended",
+          "portion": "recommended portion",
+          "nutritionalBenefit": "specific health benefit"
+        }
+      ]
+    }
+  ],
+  "nutritionalGaps": [
+    "nutrient that needs more attention"
+  ],
+  "healthTips": [
+    "specific health tip based on their eating pattern"
+  ],
+  "timing": "when to eat next meal/snack"
+}`;
+
+    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 1500,
+      temperature: 0.3
+    }, {
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const content = response.data.choices[0].message.content;
+    return JSON.parse(content);
+    
+  } catch (error) {
+    console.error('Smart food recommendation generation failed:', error);
+    
+    // Fallback recommendations
+    return {
+      nextMealSuggestions: [
+        {
+          mealType: "general",
+          foods: [
+            {
+              name: "Fruits and vegetables",
+              reason: "To balance your meal with essential nutrients",
+              portion: "1-2 servings",
+              nutritionalBenefit: "Provides vitamins, minerals, and fiber"
+            }
+          ]
+        }
+      ],
+      nutritionalGaps: ["Consider adding more fiber and vitamins"],
+      healthTips: ["Stay hydrated and maintain regular meal timing"],
+      timing: "2-3 hours from now"
+    };
+  }
 }
 
 module.exports = router; 

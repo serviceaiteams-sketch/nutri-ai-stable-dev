@@ -8,7 +8,7 @@ import {
   FaTint, FaWeight, FaBed, FaRunning, FaAppleAlt,
   FaPills, FaSyringe, FaMicroscope, FaFileAlt,
   FaArrowRight, FaPlus, FaTimes, FaSpinner,
-  FaBell, FaClock, FaInfoCircle, FaShieldAlt
+  FaBell, FaClock, FaInfoCircle, FaShieldAlt, FaMagic
 } from 'react-icons/fa';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -24,6 +24,8 @@ const HealthReportAnalysis = () => {
   const [analysisResults, setAnalysisResults] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedTab, setSelectedTab] = useState('upload');
+  const [foodRecommendations, setFoodRecommendations] = useState(null);
+  const [isLoadingFoodRecs, setIsLoadingFoodRecs] = useState(false);
   const [healthMetrics, setHealthMetrics] = useState({
     bloodPressure: { systolic: 120, diastolic: 80, status: 'normal' },
     bloodSugar: { fasting: 95, postprandial: 140, status: 'normal' },
@@ -112,8 +114,8 @@ const HealthReportAnalysis = () => {
           symptoms
         }))
       };
-      await axios.post('/api/health/conditions/bulk', payload, authHeaders());
-      const { data } = await axios.post('/api/health/conditions/recommendations', payload, authHeaders());
+      await axios.post('/api/health-analysis/conditions/bulk', payload, authHeaders());
+      const { data } = await axios.post('/api/health-analysis/conditions/recommendations', payload, authHeaders());
       setLiveRecs(normalizeRecs(data.recommendations));
       toast.success('Health conditions saved');
     } catch (e) {
@@ -128,7 +130,7 @@ const HealthReportAnalysis = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const { data } = await axios.get('/api/health/conditions', authHeaders());
+        const { data } = await axios.get('/api/health-analysis/conditions', authHeaders());
         if (Array.isArray(data.conditions)) {
           // Attach temporary ids for client-side editing if missing
           const withIds = data.conditions.map(c => ({ id: c.id || Date.now() + Math.random(), ...c }));
@@ -157,8 +159,8 @@ const HealthReportAnalysis = () => {
             symptoms
           }))
         };
-        await axios.post('/api/health/conditions/bulk', payload, authHeaders());
-        const { data: rec } = await axios.post('/api/health/conditions/recommendations', payload, authHeaders());
+        await axios.post('/api/health-analysis/conditions/bulk', payload, authHeaders());
+        const { data: rec } = await axios.post('/api/health-analysis/conditions/recommendations', payload, authHeaders());
         setLiveRecs(normalizeRecs(rec.recommendations));
       } catch (e) {
         console.debug('Autosave error:', e.response?.data?.error || e.message);
@@ -182,7 +184,7 @@ const HealthReportAnalysis = () => {
             symptoms
           }))
         };
-        const { data } = await axios.post('/api/health/conditions/recommendations', payload, authHeaders());
+        const { data } = await axios.post('/api/health-analysis/conditions/recommendations', payload, authHeaders());
         setLiveRecs(normalizeRecs(data.recommendations));
       } catch {}
     };
@@ -199,26 +201,67 @@ const HealthReportAnalysis = () => {
 
     setIsAnalyzing(true);
     try {
+      // First, upload the files
       const formData = new FormData();
       uploadedFiles.forEach(file => {
         formData.append('reports', file.file);
       });
       formData.append('healthConditions', JSON.stringify(healthConditions));
 
-      const response = await axios.post('/api/health/analyze-reports', formData, {
+      // Upload files first
+      await axios.post('/api/health-analysis/upload-reports', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      // Then analyze the uploaded reports
+      const response = await axios.post('/api/health-analysis/analyze-reports', {}, {
+        headers: {
+          'Content-Type': 'application/json'
         }
       });
 
       setAnalysisResults(response.data);
       toast.success('Health reports analyzed successfully!');
       setSelectedTab('analysis');
+      
+      // Automatically generate food recommendations after analysis
+      setTimeout(() => {
+        fetchFoodRecommendations();
+      }, 2000);
     } catch (error) {
       console.error('Error analyzing health reports:', error);
       toast.error('Failed to analyze health reports. Please try again.');
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const fetchFoodRecommendations = async () => {
+    setIsLoadingFoodRecs(true);
+    try {
+      const response = await axios.post('/api/health-analysis/food-recommendations', {}, {
+        ...authHeaders(),
+        timeout: 35000 // 35 second timeout
+      });
+      setFoodRecommendations(response.data.recommendations);
+      if (response.data.note) {
+        toast.info(response.data.note);
+      } else {
+        toast.success('Food recommendations generated successfully!');
+      }
+    } catch (error) {
+      console.error('Error fetching food recommendations:', error);
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        toast.error('Request timed out. Please try again.');
+      } else if (error.response?.status === 401) {
+        toast.error('Please log in again to access this feature.');
+      } else {
+        toast.error('Failed to generate food recommendations. Please try again.');
+      }
+    } finally {
+      setIsLoadingFoodRecs(false);
     }
   };
 
@@ -274,6 +317,7 @@ const HealthReportAnalysis = () => {
               { id: 'upload', label: 'Upload Reports', icon: FaUpload },
               { id: 'conditions', label: 'Health Conditions', icon: FaUserMd },
               { id: 'analysis', label: 'AI Analysis', icon: FaChartLine },
+              { id: 'food-recommendations', label: 'Food Recommendations', icon: FaAppleAlt },
               { id: 'monitoring', label: 'Health Monitoring', icon: FaHeart },
               { id: 'trends', label: 'Health Trends', icon: FaHistory }
             ].map((tab) => (
@@ -361,6 +405,32 @@ const HealthReportAnalysis = () => {
                           </button>
                         </motion.div>
                       ))}
+                    </div>
+                    
+                    {/* Analyze Button */}
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-gray-600">
+                          {uploadedFiles.length} file{uploadedFiles.length !== 1 ? 's' : ''} ready for analysis
+                        </div>
+                        <button
+                          onClick={analyzeHealthReports}
+                          disabled={isAnalyzing || uploadedFiles.length === 0}
+                          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
+                        >
+                          {isAnalyzing ? (
+                            <>
+                              <FaSpinner className="animate-spin" />
+                              <span>Analyzing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <FaMagic />
+                              <span>Analyze Reports</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -518,6 +588,141 @@ const HealthReportAnalysis = () => {
             </motion.div>
           )}
 
+          {selectedTab === 'food-recommendations' && (
+            <motion.div
+              key="food-recommendations"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-6"
+            >
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-3">
+                    <FaAppleAlt className="text-green-500 text-xl" />
+                    <h2 className="text-xl font-semibold text-gray-900">AI Food Recommendations</h2>
+                  </div>
+                  <button
+                    onClick={fetchFoodRecommendations}
+                    disabled={isLoadingFoodRecs}
+                    className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoadingFoodRecs ? (
+                      <>
+                        <FaSpinner className="animate-spin" />
+                        <span>Generating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaAppleAlt />
+                        <span>Get Food Recommendations</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {foodRecommendations ? (
+                  <div className="space-y-6">
+                    {/* Food Recommendations by Category */}
+                    {foodRecommendations.recommendations?.map((category, index) => (
+                      <div key={index} className="border border-green-200 rounded-lg p-4 bg-green-50">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3 capitalize">{category.category} Recommendations</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {category.foods?.map((food, foodIndex) => (
+                            <div key={foodIndex} className="bg-white rounded-lg p-3 border border-green-100">
+                              <h4 className="font-medium text-gray-900">{food.name}</h4>
+                              <p className="text-sm text-gray-600 mt-1">{food.benefit}</p>
+                              <div className="flex justify-between text-xs text-gray-500 mt-2">
+                                <span>Portion: {food.portion}</span>
+                                <span>Frequency: {food.frequency}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* General Guidelines */}
+                    {foodRecommendations.generalGuidelines?.length > 0 && (
+                      <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">General Dietary Guidelines</h3>
+                        <ul className="list-disc ml-5 space-y-1">
+                          {foodRecommendations.generalGuidelines.map((guideline, index) => (
+                            <li key={index} className="text-gray-700">{guideline}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Foods to Limit */}
+                    {foodRecommendations.foodsToLimit?.length > 0 && (
+                      <div className="border border-yellow-200 rounded-lg p-4 bg-yellow-50">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">Foods to Limit</h3>
+                        <div className="space-y-2">
+                          {foodRecommendations.foodsToLimit.map((food, index) => (
+                            <div key={index} className="bg-white rounded-lg p-3 border border-yellow-100">
+                              <h4 className="font-medium text-gray-900">{food.name}</h4>
+                              <p className="text-sm text-gray-600 mt-1">{food.reason}</p>
+                              {food.alternative && (
+                                <p className="text-sm text-green-600 mt-1">
+                                  <strong>Alternative:</strong> {food.alternative}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Supplements */}
+                    {foodRecommendations.supplements?.length > 0 && (
+                      <div className="border border-purple-200 rounded-lg p-4 bg-purple-50">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">Supplement Recommendations</h3>
+                        <div className="space-y-2">
+                          {foodRecommendations.supplements.map((supplement, index) => (
+                            <div key={index} className="bg-white rounded-lg p-3 border border-purple-100">
+                              <h4 className="font-medium text-gray-900">{supplement.name}</h4>
+                              <p className="text-sm text-gray-600 mt-1">{supplement.benefit}</p>
+                              <div className="flex justify-between text-xs text-gray-500 mt-2">
+                                <span>Dosage: {supplement.dosage}</span>
+                                {supplement.note && <span className="text-purple-600">{supplement.note}</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <FaAppleAlt className="mx-auto text-gray-400 text-4xl mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Get Personalized Food Recommendations</h3>
+                    <p className="text-gray-600 mb-4">
+                      Based on your health reports and conditions, we'll provide personalized food recommendations to support your health goals.
+                    </p>
+                    <button
+                      onClick={fetchFoodRecommendations}
+                      disabled={isLoadingFoodRecs}
+                      className="inline-flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoadingFoodRecs ? (
+                        <>
+                          <FaSpinner className="animate-spin" />
+                          <span>Generating Recommendations...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FaAppleAlt />
+                          <span>Generate Food Recommendations</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
           {selectedTab === 'analysis' && (
             <motion.div
               key="analysis"
@@ -551,51 +756,86 @@ const HealthReportAnalysis = () => {
                   </button>
                 </div>
 
-                {/* Always show condition-based recommendations */}
-                <div className="mb-8">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Recommendations Based on Your Conditions</h3>
-                  {liveRecs.length ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {liveRecs.map((r, idx) => (
-                        <div key={idx} className="border border-green-200 rounded-lg p-4 bg-green-50">
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="font-semibold text-gray-900">{r.condition}</p>
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-white border border-green-300 text-green-700">{r.severity}</span>
+                {/* Show report analysis first if available, otherwise show condition-based recommendations */}
+                {analysisResults ? (
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Report Analysis Results</h3>
+                    <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-semibold text-gray-900">Health Report Analysis</h3>
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                          {analysisResults.confidence || 'Analysis Complete'}
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-700">
+                        <p className="mb-2"><strong>Summary:</strong> {analysisResults.analysisSummary || 'Analysis completed'}</p>
+                        {analysisResults.findings && analysisResults.findings.length > 0 ? (
+                          <div>
+                            <p className="font-medium mt-2">Key Findings:</p>
+                            <ul className="list-disc ml-5">
+                              {analysisResults.findings.map((finding, i) => (
+                                <li key={i} className={`${
+                                  finding.type === 'warning' ? 'text-yellow-700' :
+                                  finding.type === 'danger' ? 'text-red-700' :
+                                  finding.type === 'success' ? 'text-green-700' : 'text-blue-700'
+                                }`}>
+                                  {finding.title}: {finding.description}
+                                </li>
+                              ))}
+                            </ul>
                           </div>
-                          <div className="text-sm text-gray-700">
-                            <p className="font-medium mt-1">Treatment</p>
-                            <ul className="list-disc ml-5">
-                              {r.treatment?.map((t,i)=> <li key={i}>{t}</li>)}
-                            </ul>
-                            <p className="font-medium mt-2">Diet - Include</p>
-                            <ul className="list-disc ml-5">
-                              {r.foods?.map((f,i)=> <li key={i}>{f}</li>)}
-                            </ul>
-                            {r.avoid?.length ? (
-                              <>
-                                <p className="font-medium mt-2">Diet - Avoid/Limit</p>
-                                <ul className="list-disc ml-5">
-                                  {r.avoid.map((f,i)=> <li key={i}>{f}</li>)}
-                                </ul>
-                              </>
-                            ) : null}
-                            <p className="font-medium mt-2">Care & Self-care</p>
-                            <ul className="list-disc ml-5">
-                              {r.care?.map((c,i)=> <li key={i}>{c}</li>)}
-                            </ul>
-                            <p className="font-medium mt-2">Exercises</p>
-                            <ul className="list-disc ml-5">
-                              {r.exercises?.map((ex,i)=> <li key={i}>{ex}</li>)}
-                            </ul>
-                            <p className="text-xs text-gray-500 mt-2">{r.notes}</p>
-                          </div>
-                        </div>
-                      ))}
+                        ) : (
+                          <p className="text-green-700">✅ No significant findings - results appear normal</p>
+                        )}
+                      </div>
                     </div>
-                  ) : (
-                    <p className="text-sm text-gray-600">Add your health conditions to instantly see tailored diet and exercise guidance here.</p>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Recommendations Based on Your Conditions</h3>
+                    {liveRecs.length ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {liveRecs.map((r, idx) => (
+                          <div key={idx} className="border border-green-200 rounded-lg p-4 bg-green-50">
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="font-semibold text-gray-900">{r.condition}</p>
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-white border border-green-300 text-green-700">{r.severity}</span>
+                            </div>
+                            <div className="text-sm text-gray-700">
+                              <p className="font-medium mt-1">Treatment</p>
+                              <ul className="list-disc ml-5">
+                                {r.treatment?.map((t,i)=> <li key={i}>{t}</li>)}
+                              </ul>
+                              <p className="font-medium mt-2">Diet - Include</p>
+                              <ul className="list-disc ml-5">
+                                {r.foods?.map((f,i)=> <li key={i}>{f}</li>)}
+                              </ul>
+                              {r.avoid?.length ? (
+                                <>
+                                  <p className="font-medium mt-2">Diet - Avoid/Limit</p>
+                                  <ul className="list-disc ml-5">
+                                    {r.avoid.map((f,i)=> <li key={i}>{f}</li>)}
+                                  </ul>
+                                </>
+                              ) : null}
+                              <p className="font-medium mt-2">Care & Self-care</p>
+                              <ul className="list-disc ml-5">
+                                {r.care?.map((c,i)=> <li key={i}>{c}</li>)}
+                              </ul>
+                              <p className="font-medium mt-2">Exercises</p>
+                              <ul className="list-disc ml-5">
+                                {r.exercises?.map((ex,i)=> <li key={i}>{ex}</li>)}
+                              </ul>
+                              <p className="text-xs text-gray-500 mt-2">{r.notes}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-600">Add your health conditions to instantly see tailored diet and exercise guidance here.</p>
+                    )}
+                  </div>
+                )}
 
                 {analysisResults ? (
                   <div className="space-y-6">

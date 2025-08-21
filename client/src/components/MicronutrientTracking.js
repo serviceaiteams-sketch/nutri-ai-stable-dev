@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaPills, FaHeartbeat, FaExclamationTriangle, FaCheckCircle,
-  FaChartLine, FaAppleAlt, FaLeaf, FaEye, FaTrendingUp,
-  FaTrendingDown, FaShoppingCart, FaLightbulb, FaCalendarAlt,
+  FaChartLine, FaAppleAlt, FaLeaf, FaEye, FaBullseye,
+  FaShoppingCart, FaLightbulb, FaCalendarAlt,
   FaInfoCircle, FaLock, FaShieldAlt, FaUser, FaCog, FaDownload,
-  FaShare, FaBookmark, FaHistory, FaBullseye, FaArrowRight
+  FaShare, FaBookmark, FaHistory, FaArrowRight
 } from 'react-icons/fa';
 import axios from 'axios';
 

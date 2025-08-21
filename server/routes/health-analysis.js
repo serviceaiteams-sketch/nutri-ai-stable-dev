@@ -102,6 +102,19 @@ const initializeHealthTables = async () => {
     `);
 
     console.log('✅ Health analysis tables initialized');
+    
+    // Migration: Add missing columns to existing tables
+    try {
+      // Check if health_conditions table has symptoms column
+      const healthConditionsColumns = await getAll("PRAGMA table_info(health_conditions)");
+      const hasSymptoms = healthConditionsColumns.some(c => c.name === 'symptoms');
+      if (!hasSymptoms) {
+        await runQuery('ALTER TABLE health_conditions ADD COLUMN symptoms TEXT');
+        console.log('🛠️ Added missing health_conditions.symptoms column');
+      }
+    } catch (error) {
+      console.log('Migration completed (some columns may already exist)');
+    }
   } catch (error) {
     console.error('❌ Error initializing health tables:', error);
   }
@@ -418,62 +431,156 @@ router.get('/recommendations', authenticateToken, async (req, res) => {
   }
 });
 
-// Simulate AI analysis function
+// AI analysis function using ChatGPT API
 async function performAIAnalysis(reports, conditions) {
-  // This is a simulation - in a real implementation, this would call an AI service
-  // like OpenAI's GPT-4 Vision API or a specialized medical AI service
-  
-  const analysis = {
-    totalReports: reports.length,
-    normalMetrics: Math.floor(Math.random() * 8) + 5,
-    attentionNeeded: Math.floor(Math.random() * 3) + 1,
-    findings: [
-      {
-        type: 'warning',
-        title: 'Blood Pressure Elevated',
-        description: 'Your systolic blood pressure is slightly above normal range. Consider lifestyle modifications.'
-      },
-      {
-        type: 'success',
-        title: 'Cholesterol Levels Optimal',
-        description: 'Your cholesterol profile shows excellent values within healthy ranges.'
-      },
-      {
-        type: 'info',
-        title: 'Vitamin D Improving',
-        description: 'Your vitamin D levels have improved compared to previous reports.'
-      }
-    ],
-    recommendations: [
-      {
-        title: 'Monitor Blood Pressure',
-        description: 'Check your blood pressure regularly and consider reducing salt intake.',
-        action: 'Set Reminder'
-      },
-      {
-        title: 'Increase Physical Activity',
-        description: 'Aim for 150 minutes of moderate exercise per week to improve cardiovascular health.',
-        action: 'View Exercise Plans'
-      },
-      {
-        title: 'Schedule Follow-up',
-        description: 'Schedule a follow-up appointment with your healthcare provider in 3 months.',
-        action: 'Book Appointment'
-      }
-    ],
-    riskFactors: [
-      'Family history of cardiovascular disease',
-      'Sedentary lifestyle',
-      'Stress levels'
-    ],
-    nextSteps: [
-      'Continue monitoring blood pressure daily',
-      'Increase physical activity gradually',
-      'Follow up with healthcare provider'
-    ]
-  };
+  try {
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_API_KEY) {
+      throw new Error('OpenAI API key not configured');
+    }
 
-  return analysis;
+    const axios = require('axios');
+    
+    // Prepare report data for analysis with content
+    const reportData = [];
+    for (const report of reports) {
+      try {
+        // Read file content if it exists
+        const fs = require('fs');
+        const path = require('path');
+        let content = '';
+        
+        if (fs.existsSync(report.file_path)) {
+          if (report.file_type === 'application/pdf') {
+            // For PDFs, we'll extract text content
+            const pdf = require('pdf-parse');
+            const dataBuffer = fs.readFileSync(report.file_path);
+            const pdfData = await pdf(dataBuffer);
+            content = pdfData.text;
+          } else if (report.file_type.startsWith('image/')) {
+            // For images, we'll describe the file
+            content = `Image file: ${report.filename}`;
+          } else {
+            // For other files, try to read as text
+            content = fs.readFileSync(report.file_path, 'utf8');
+          }
+        }
+        
+        reportData.push({
+          filename: report.filename,
+          fileType: report.file_type,
+          uploadedAt: report.uploaded_at,
+          content: content.substring(0, 5000) // Limit content length
+        });
+      } catch (error) {
+        console.log(`Could not read content for ${report.filename}:`, error.message);
+        reportData.push({
+          filename: report.filename,
+          fileType: report.file_type,
+          uploadedAt: report.uploaded_at,
+          content: 'Content could not be extracted'
+        });
+      }
+    }
+
+    // Create a comprehensive prompt for health report analysis
+    const prompt = `You are an expert medical AI assistant analyzing health reports. 
+
+PATIENT CONTEXT:
+- Health Conditions: ${conditions.map(c => `${c.condition_name} (${c.severity || 'mild'})`).join(', ') || 'None specified'}
+
+REPORTS TO ANALYZE:
+${reportData.map((report, index) => `
+REPORT ${index + 1}: ${report.filename}
+Type: ${report.fileType}
+Content:
+${report.content}
+`).join('\n')}
+
+TASK: Analyze the actual content of the uploaded health reports and provide a comprehensive medical analysis.
+
+IMPORTANT GUIDELINES:
+1. Analyze the ACTUAL LAB VALUES and results shown in the report content
+2. Compare values to reference ranges when provided
+3. If values are within normal ranges, clearly state "NORMAL" or "WITHIN NORMAL RANGE"
+4. If a report shows normal values, do NOT diagnose conditions - state the results are normal
+5. Only identify issues if values are clearly outside normal ranges
+6. Be conservative - when in doubt, recommend consulting a healthcare provider
+7. Focus on the actual lab results, not the patient's existing conditions
+
+Return STRICT JSON in this exact schema (no prose outside JSON):
+{
+  "totalReports": ${reports.length},
+  "normalMetrics": number,
+  "attentionNeeded": number,
+  "findings": [
+    {
+      "type": "success|warning|danger|info",
+      "title": "Finding title",
+      "description": "Detailed description of the finding"
+    }
+  ],
+  "recommendations": [
+    {
+      "title": "Recommendation title",
+      "description": "Detailed recommendation",
+      "action": "Suggested action"
+    }
+  ],
+  "riskFactors": ["risk factor 1", "risk factor 2"],
+  "nextSteps": ["next step 1", "next step 2"],
+  "analysisSummary": "Overall summary of the analysis",
+  "confidence": "high|medium|low",
+  "limitations": ["limitation 1", "limitation 2"]
+}`;
+
+    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 2000,
+      temperature: 0.2
+    }, {
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const content = response.data.choices[0].message.content;
+    const analysis = JSON.parse(content);
+    
+    console.log('✅ AI analysis completed successfully');
+    return analysis;
+    
+  } catch (error) {
+    console.error('❌ AI analysis failed:', error.message);
+    
+    // Fallback to basic analysis
+    return {
+      totalReports: reports.length,
+      normalMetrics: 0,
+      attentionNeeded: 0,
+      findings: [
+        {
+          type: 'info',
+          title: 'Analysis Unavailable',
+          description: 'Unable to analyze reports at this time. Please consult your healthcare provider for interpretation.'
+        }
+      ],
+      recommendations: [
+        {
+          title: 'Consult Healthcare Provider',
+          description: 'Please discuss your lab results with your doctor for proper interpretation.',
+          action: 'Schedule Appointment'
+        }
+      ],
+      riskFactors: [],
+      nextSteps: ['Consult with healthcare provider'],
+      analysisSummary: 'Analysis could not be completed. Please consult your healthcare provider.',
+      confidence: 'low',
+      limitations: ['AI analysis unavailable', 'Manual review required']
+    };
+  }
 }
 
 // Generate health recommendations based on conditions
@@ -501,19 +608,33 @@ async function generateAIRecommendations(conditions) {
     }
 
     const axios = require('axios');
-    const prompt = `You are an expert clinician and dietitian. Provide concise, practical guidance for these conditions: ${conditions.map(c => `${c.condition} (${c.severity || 'mild'})`).join(', ')}.
+    const prompt = `You are an expert medical AI assistant specializing in personalized health recommendations. 
+
+PATIENT CONDITIONS: ${conditions.map(c => `${c.condition} (${c.severity || 'mild'})`).join(', ') || 'No specific conditions'}
+
+TASK: Provide comprehensive, evidence-based recommendations for each condition.
+
+IMPORTANT GUIDELINES:
+1. Be conservative and safety-focused
+2. Always recommend consulting healthcare providers for medical decisions
+3. Provide practical, actionable advice
+4. Consider interactions between multiple conditions
+5. Focus on lifestyle modifications and preventive care
 
 Return STRICT JSON in this exact schema (no prose outside JSON):
 [
   {
     "condition": "condition name",
     "severity": "severity level",
-    "treatment": ["first-line treatment or clinical advice", "when to see doctor", "tests to consider"],
-    "diet": { "include": ["foods to include"], "avoid": ["foods to limit/avoid"] },
-    "care": ["self-care steps", "monitoring reminders", "lifestyle"],
-    "exerciseRecommendations": ["exercise1", "exercise2"],
-    "monitoringMetrics": ["metric1", "metric2"],
-    "safetyConsiderations": ["safety1", "safety2"]
+    "treatment": ["clinical advice", "when to see doctor", "important tests"],
+    "diet": { 
+      "include": ["foods to include"], 
+      "avoid": ["foods to limit/avoid"] 
+    },
+    "care": ["self-care steps", "monitoring reminders", "lifestyle changes"],
+    "exerciseRecommendations": ["exercise recommendations"],
+    "monitoringMetrics": ["key metrics to track"],
+    "safetyConsiderations": ["safety warnings", "red flags to watch for"]
   }
 ]`;
 
@@ -628,6 +749,247 @@ function generateFallbackRecommendations(conditions) {
   }
   
   return recommendations;
+}
+
+// Generate food recommendations based on health reports
+router.post('/food-recommendations', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Get user's health reports and conditions
+    const reports = await getAll(
+      'SELECT * FROM health_reports WHERE user_id = ? ORDER BY uploaded_at DESC',
+      [userId]
+    );
+    
+    const conditions = await getAll(
+      'SELECT * FROM health_conditions WHERE user_id = ?',
+      [userId]
+    );
+
+    // Set a timeout for the AI request
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout')), 30000); // 30 seconds
+    });
+
+    // Generate AI-powered food recommendations with timeout
+    const foodRecommendationsPromise = generateFoodRecommendations(reports, conditions);
+    const foodRecommendations = await Promise.race([foodRecommendationsPromise, timeoutPromise]);
+    
+    res.json({
+      success: true,
+      recommendations: foodRecommendations
+    });
+  } catch (error) {
+    console.error('Error generating food recommendations:', error);
+    
+    // Return fallback recommendations if AI fails
+    const fallbackRecommendations = {
+      recommendations: [
+        {
+          category: "general",
+          foods: [
+            {
+              name: "Leafy green vegetables",
+              benefit: "Rich in vitamins and minerals",
+              frequency: "Daily",
+              portion: "2-3 cups"
+            },
+            {
+              name: "Lean proteins",
+              benefit: "Essential for muscle maintenance",
+              frequency: "Daily",
+              portion: "3-4 oz per meal"
+            }
+          ]
+        }
+      ],
+      generalGuidelines: [
+        "Eat a balanced diet with plenty of fruits and vegetables",
+        "Stay hydrated with water throughout the day",
+        "Limit processed foods and added sugars"
+      ],
+      foodsToLimit: [
+        {
+          name: "Processed foods",
+          reason: "High in sodium and unhealthy fats",
+          alternative: "Fresh, whole foods"
+        }
+      ],
+      supplements: [
+        {
+          name: "Multivitamin",
+          benefit: "Fills nutritional gaps",
+          dosage: "1 tablet daily",
+          note: "Consult with healthcare provider"
+        }
+      ]
+    };
+    
+    res.json({
+      success: true,
+      recommendations: fallbackRecommendations,
+      note: "Using fallback recommendations due to AI service issue"
+    });
+  }
+});
+
+// Generate AI-powered food recommendations
+async function generateFoodRecommendations(reports, conditions) {
+  try {
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_API_KEY) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    const axios = require('axios');
+    
+    // Prepare report data for analysis
+    const reportData = [];
+    for (const report of reports) {
+      try {
+        const fs = require('fs');
+        let content = '';
+        
+        if (fs.existsSync(report.file_path)) {
+          if (report.file_type === 'application/pdf') {
+            const pdf = require('pdf-parse');
+            const dataBuffer = fs.readFileSync(report.file_path);
+            const pdfData = await pdf(dataBuffer);
+            content = pdfData.text;
+          } else {
+            content = fs.readFileSync(report.file_path, 'utf8');
+          }
+        }
+        
+        reportData.push({
+          filename: report.filename,
+          content: content.substring(0, 3000)
+        });
+      } catch (error) {
+        console.log(`Could not read content for ${report.filename}:`, error.message);
+      }
+    }
+
+    const prompt = `You are an expert nutritionist and dietitian. Based on the health reports and conditions provided, generate personalized food recommendations.
+
+PATIENT CONTEXT:
+- Health Conditions: ${conditions.map(c => `${c.condition_name} (${c.severity || 'mild'})`).join(', ') || 'None specified'}
+
+HEALTH REPORTS:
+${reportData.map((report, index) => `
+REPORT ${index + 1}: ${report.filename}
+Content: ${report.content}
+`).join('\n')}
+
+TASK: Generate personalized food recommendations based on the health reports and conditions.
+
+IMPORTANT GUIDELINES:
+1. Focus on foods that support the specific health conditions identified
+2. Consider any abnormal lab values and recommend foods that help address them
+3. If all values are normal, recommend foods for general health and prevention
+4. Include specific foods, not just general categories
+5. Consider cultural preferences and practical meal planning
+6. Be specific about portion sizes and frequency
+
+Return STRICT JSON in this exact schema (no prose outside JSON):
+{
+  "recommendations": [
+    {
+      "category": "breakfast",
+      "foods": [
+        {
+          "name": "food name",
+          "benefit": "specific health benefit",
+          "frequency": "how often to consume",
+          "portion": "recommended portion size"
+        }
+      ]
+    }
+  ],
+  "generalGuidelines": [
+    "general dietary guideline 1",
+    "general dietary guideline 2"
+  ],
+  "foodsToLimit": [
+    {
+      "name": "food name",
+      "reason": "why to limit",
+      "alternative": "healthier alternative"
+    }
+  ],
+  "supplements": [
+    {
+      "name": "supplement name",
+      "benefit": "health benefit",
+      "dosage": "recommended dosage",
+      "note": "important note"
+    }
+  ]
+}`;
+
+    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 2000,
+      temperature: 0.3
+    }, {
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const content = response.data.choices[0].message.content;
+    
+    // Try to extract JSON from markdown code blocks if present
+    let jsonContent = content;
+    if (content.includes('```json')) {
+      const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        jsonContent = jsonMatch[1];
+      }
+    } else if (content.includes('```')) {
+      const jsonMatch = content.match(/```\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        jsonContent = jsonMatch[1];
+      }
+    }
+    
+    try {
+      return JSON.parse(jsonContent);
+    } catch (parseError) {
+      console.error('Failed to parse AI response as JSON:', parseError);
+      console.log('Raw AI response:', content);
+      throw new Error('Invalid JSON response from AI');
+    }
+    
+  } catch (error) {
+    console.error('AI food recommendation generation failed:', error);
+    
+    // Fallback recommendations
+    return {
+      recommendations: [
+        {
+          category: "general",
+          foods: [
+            {
+              name: "Leafy green vegetables",
+              benefit: "Rich in vitamins and minerals",
+              frequency: "Daily",
+              portion: "2-3 cups"
+            }
+          ]
+        }
+      ],
+      generalGuidelines: [
+        "Eat a balanced diet with plenty of fruits and vegetables",
+        "Stay hydrated with water throughout the day"
+      ],
+      foodsToLimit: [],
+      supplements: []
+    };
+  }
 }
 
 module.exports = router; 

@@ -101,11 +101,9 @@ router.post('/register', [
 
     // Insert new user
     const result = await runQuery(
-      `INSERT INTO users (email, password, name, age, gender, height, weight, 
-       activity_level, health_goal, dietary_preferences, allergies, medical_conditions) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [email, hashedPassword, name, age, gender, height, weight, activity_level, 
-       health_goal, dietary_preferences, allergies, medical_conditions]
+      `INSERT INTO users (email, password, name, age) 
+       VALUES (?, ?, ?, ?)`,
+      [email, hashedPassword, name, age || null]
     );
 
     // Generate token
@@ -113,7 +111,7 @@ router.post('/register', [
 
     // Get user data (without password)
     const user = await getRow(
-      'SELECT id, email, name, age, gender, height, weight, activity_level, health_goal FROM users WHERE id = ?',
+      'SELECT id, email, name, age FROM users WHERE id = ?',
       [result.id]
     );
 

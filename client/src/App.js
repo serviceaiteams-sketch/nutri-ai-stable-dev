@@ -23,13 +23,17 @@ import SleepTracking from './components/SleepTracking';
 import FeedbackChat from './components/FeedbackChat';
 import AdminFeedback from './components/AdminFeedback';
 import AddictionAssistant from './components/AddictionAssistant';
+import AdvancedAnalytics from './components/AdvancedAnalytics';
+import AIMealPlanning from './components/AIMealPlanning';
+import SmartNotifications from './components/SmartNotifications';
+import Gamification from './components/Gamification';
 
 // Context
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ViewModeProvider } from './context/ViewModeContext';
 
 // API configuration
-axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 function App() {
   return (
@@ -71,6 +75,10 @@ function AppContent() {
           <Route path="/ai-assistant" element={user ? <AIAssistant /> : <Navigate to="/login" />} />
           <Route path="/settings" element={user ? <Settings /> : <Navigate to="/login" />} />
           <Route path="/advanced-features" element={user ? <AdvancedFeaturesPage /> : <Navigate to="/login" />} />
+          <Route path="/analytics" element={user ? <AdvancedAnalytics /> : <Navigate to="/login" />} />
+          <Route path="/meal-planning" element={user ? <AIMealPlanning /> : <Navigate to="/login" />} />
+          <Route path="/notifications" element={user ? <SmartNotifications /> : <Navigate to="/login" />} />
+          <Route path="/gamification" element={user ? <Gamification /> : <Navigate to="/login" />} />
           <Route path="/admin/feedback" element={user ? <AdminFeedback /> : <Navigate to="/login" />} />
           <Route path="/addiction" element={user ? <AddictionAssistant /> : <Navigate to="/login" />} />
           <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />

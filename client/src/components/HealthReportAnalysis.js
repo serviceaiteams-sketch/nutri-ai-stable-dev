@@ -102,6 +102,11 @@ const HealthReportAnalysis = () => {
     ));
   };
 
+  const removeHealthCondition = (id) => {
+    setHealthConditions(prev => prev.filter(condition => condition.id !== id));
+    toast.success('Condition removed');
+  };
+
   const saveConditions = async () => {
     try {
       setSaving(true);
@@ -479,6 +484,16 @@ const HealthReportAnalysis = () => {
                       animate={{ opacity: 1, y: 0 }}
                       className="p-4 border border-gray-200 rounded-lg bg-gray-50"
                     >
+                      <div className="flex items-center justify-end mb-2">
+                        <button
+                          onClick={() => removeHealthCondition(condition.id)}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-md text-red-600 hover:text-red-700 hover:bg-red-50"
+                          title="Delete condition"
+                          aria-label="Delete condition"
+                        >
+                          <FaTimes />
+                        </button>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">

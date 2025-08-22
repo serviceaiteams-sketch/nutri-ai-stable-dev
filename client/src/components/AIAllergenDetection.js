@@ -95,10 +95,28 @@ const AIAllergenDetection = () => {
 
       if (response.data.success) {
         const result = response.data.data;
-        
-        setDetectedAllergens(result.allergens);
+
+        // Enrich server response with local icon components and safe defaults
+        const enrichedAllergens = (result.allergens || []).map(a => ({
+          ...a,
+          icon: (a.icon || (a.type && commonAllergens[a.type]?.icon)) || FaInfoCircle
+        }));
+
+        const getRecIcon = (type) => (
+          type === 'warning' ? FaExclamationTriangle :
+          type === 'caution' ? FaInfoCircle :
+          type === 'safe' ? FaCheckCircle :
+          FaBan
+        );
+
+        const enrichedRecommendations = (result.recommendations || []).map(r => ({
+          ...r,
+          icon: r.icon || getRecIcon(r.type)
+        }));
+
+        setDetectedAllergens(enrichedAllergens);
         setSafetyScore(result.safetyScore);
-        setAnalysisResult(result);
+        setAnalysisResult({ ...result, allergens: enrichedAllergens, recommendations: enrichedRecommendations });
         
         // Add to history
         setScanHistory(prev => [result, ...prev.slice(0, 9)]);

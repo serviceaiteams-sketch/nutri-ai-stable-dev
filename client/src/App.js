@@ -33,7 +33,14 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ViewModeProvider } from './context/ViewModeContext';
 
 // API configuration
-axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+// Use explicit API URL only if provided; otherwise rely on CRA proxy (client/package.json -> proxy)
+const apiUrl = process.env.REACT_APP_API_URL;
+if (apiUrl) {
+  axios.defaults.baseURL = apiUrl;
+} else {
+  // Ensure relative requests go to http://localhost:3000 and are proxied to backend (http://localhost:5000)
+  delete axios.defaults.baseURL;
+}
 
 function App() {
   return (

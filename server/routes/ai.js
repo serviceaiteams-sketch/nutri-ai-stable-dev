@@ -9,6 +9,8 @@ const axios = require('axios');
 
 // OpenAI API configuration
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_KEY_PLACEHOLDER = !OPENAI_API_KEY ? false : /your-openai-api-key-here/i.test(OPENAI_API_KEY);
+const HAS_VALID_OPENAI_KEY = !!(OPENAI_API_KEY && !OPENAI_KEY_PLACEHOLDER);
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 const router = express.Router();
@@ -71,7 +73,7 @@ const upload = multer({
   }
 });
 
-// Food recognition using OpenAI API
+// Food recognition using OpenAI API (with development fallback when no API key)
 router.post('/recognize-food', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
@@ -95,8 +97,13 @@ router.post('/recognize-food', upload.single('image'), async (req, res) => {
       return res.json({ success: true, imageUrl, ...cache[imageHash] });
     }
 
-    // Use OpenAI for food recognition
-    const recognizedFoods = await recognizeFoodWithOpenAI(imagePath + '_processed');
+    // Use OpenAI for food recognition if key is configured, otherwise simulate
+    let recognizedFoods = [];
+    if (HAS_VALID_OPENAI_KEY) {
+      recognizedFoods = await recognizeFoodWithOpenAI(imagePath + '_processed');
+    } else {
+      recognizedFoods = await simulateFoodRecognition(imagePath + '_processed');
+    }
 
     // Check if any food was detected
     if (!recognizedFoods || recognizedFoods.length === 0) {
@@ -108,8 +115,10 @@ router.post('/recognize-food', upload.single('image'), async (req, res) => {
       });
     }
 
-    // Get nutrition data for recognized foods using OpenAI
-    const nutritionData = await getNutritionDataWithOpenAI(recognizedFoods);
+    // Get nutrition data for recognized foods using OpenAI or fallback
+    const nutritionData = HAS_VALID_OPENAI_KEY
+      ? await getNutritionDataWithOpenAI(recognizedFoods)
+      : await getNutritionData(recognizedFoods);
 
     const payload = {
       success: true,
@@ -661,6 +670,11 @@ router.post('/chat', async (req, res) => {
         role: m.type === 'user' || m.role === 'user' ? 'user' : 'assistant',
         content: String(m.content).slice(0, 8000)
       });
+    }
+
+    if (!HAS_VALID_OPENAI_KEY) {
+      const canned = 'AI features are running in demo mode. Upload a clear food photo or ask nutrition questions. To enable full AI, set OPENAI_API_KEY in .env and restart.';
+      return res.json({ reply: canned, demo: true });
     }
 
     const response = await axios.post(

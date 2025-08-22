@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FaUtensils, FaHeartbeat, FaWalking, FaFire, FaShoppingCart, FaCalendarAlt, FaLightbulb } from 'react-icons/fa';
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 
 const DynamicMealPlanning = () => {
   const [mood, setMood] = useState('neutral');
@@ -13,6 +14,65 @@ const DynamicMealPlanning = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+
+  // Quick local fallback generator (10–15 random meals/snacks)
+  const generateQuickLocalPlan = () => {
+    const mealNames = [
+      'Oatmeal with Berries', 'Masala Dosa', 'Idli with Sambar', 'Veg Pulao', 'Grilled Chicken Salad',
+      'Chana Masala', 'Paneer Bhurji', 'Egg Fried Rice', 'Quinoa Bowl', 'Tofu Stir-fry',
+      'Dal Khichdi', 'Palak Paneer', 'Tomato Soup with Toast', 'Greek Yogurt Parfait', 'Fruit Chaat'
+    ];
+    const pick = () => mealNames[Math.floor(Math.random() * mealNames.length)];
+    const rand = (min, max) => Math.round(min + Math.random() * (max - min));
+
+    // Create between 4 and 5 days, totalling roughly 10–15 items
+    const daysCount = rand(4, 5);
+    const days = [];
+    for (let d = 0; d < daysCount; d++) {
+      const mealsPerDay = rand(2, 3);
+      const snacksPerDay = rand(1, 2);
+      const meals = Array.from({ length: mealsPerDay }, (_, i) => ({
+        name: pick(),
+        mealType: ['breakfast', 'lunch', 'dinner'][i] || 'meal',
+        nutrition: { calories: rand(250, 550), protein: rand(8, 35), carbs: rand(20, 60), fat: rand(5, 20) },
+        seasonalIngredients: [],
+      }));
+      const snacks = Array.from({ length: snacksPerDay }, () => ({
+        name: pick(),
+        mealType: 'snack',
+        nutrition: { calories: rand(120, 280), protein: rand(3, 12), carbs: rand(8, 30), fat: rand(2, 12) },
+        seasonalIngredients: [],
+      }));
+
+      const dailyNutrition = [...meals, ...snacks].reduce((t, m) => ({
+        calories: t.calories + m.nutrition.calories,
+        protein: t.protein + m.nutrition.protein,
+        carbs: t.carbs + m.nutrition.carbs,
+        fat: t.fat + m.nutrition.fat
+      }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+      days.push({
+        day: d + 1,
+        date: new Date(Date.now() + d * 86400000).toISOString().split('T')[0],
+        meals,
+        snacks,
+        dailyNutrition
+      });
+    }
+
+    const shoppingList = { estimatedCost: rand(25, 60) };
+    const recommendations = [
+      { message: 'Stay hydrated and include one fruit with breakfast.' },
+      { message: 'Aim for a protein source in every meal.' }
+    ];
+
+    return {
+      success: true,
+      mealPlan: { meals: days },
+      shoppingList,
+      recommendations
+    };
+  };
 
   const conditionOptions = [
     'diabetes', 'hypertension', 'high_cholesterol', 'gluten_intolerance', 'lactose_intolerance', 'kidney_disease'
@@ -42,13 +102,24 @@ const DynamicMealPlanning = () => {
         dietaryPattern, // Send dietary pattern
         cuisinePreference // Send cuisine preference
       };
+      // Short timeout so UI remains responsive; fall back locally if slow or fails
       const { data } = await axios.post('/api/dynamic-meal-planning/generate', body, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000
       });
-      setResult(data);
+      if (data && data.success) {
+        setResult(data);
+      } else {
+        const local = generateQuickLocalPlan();
+        setResult(local);
+        toast('Showing a quick locally generated plan.', { icon: '⚡' });
+      }
     } catch (e) {
       console.error(e);
-      setError('Failed to generate plan. Please try again.');
+      const local = generateQuickLocalPlan();
+      setResult(local);
+      setError(null);
+      toast('Server is busy. Showing a quick locally generated plan.', { icon: '⚡' });
     } finally {
       setIsGenerating(false);
     }

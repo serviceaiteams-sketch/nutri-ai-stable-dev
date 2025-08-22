@@ -150,42 +150,52 @@ const migrations = [
     version: 8,
     name: 'add_health_metrics_table',
     up: async () => {
-      await runQuery(`
-        CREATE TABLE IF NOT EXISTS health_metrics (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          metric_type TEXT NOT NULL,
-          value REAL NOT NULL,
-          unit TEXT,
-          notes TEXT,
-          measured_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        )
-      `);
-      await runQuery('CREATE INDEX IF NOT EXISTS idx_health_metrics_user_type ON health_metrics(user_id, metric_type)');
+      try {
+        await runQuery(`
+          CREATE TABLE IF NOT EXISTS health_metrics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            metric_type TEXT NOT NULL,
+            value REAL NOT NULL,
+            unit TEXT,
+            notes TEXT,
+            measured_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+          )
+        `);
+        console.log('✅ Health metrics table created successfully');
+      } catch (error) {
+        console.error('Error in migration 8:', error);
+        throw error;
+      }
     }
   },
   {
     version: 9,
     name: 'add_health_alerts_table',
     up: async () => {
-      await runQuery(`
-        CREATE TABLE IF NOT EXISTS health_alerts (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          alert_type TEXT NOT NULL,
-          severity TEXT NOT NULL,
-          title TEXT NOT NULL,
-          message TEXT NOT NULL,
-          recommendations TEXT,
-          is_acknowledged BOOLEAN DEFAULT 0,
-          acknowledged_at DATETIME,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        )
-      `);
-      await runQuery('CREATE INDEX IF NOT EXISTS idx_health_alerts_user ON health_alerts(user_id, is_acknowledged)');
+      try {
+        await runQuery(`
+          CREATE TABLE IF NOT EXISTS health_alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            alert_type TEXT NOT NULL,
+            severity TEXT NOT NULL,
+            title TEXT NOT NULL,
+            message TEXT NOT NULL,
+            recommendations TEXT,
+            is_acknowledged BOOLEAN DEFAULT 0,
+            acknowledged_at DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+          )
+        `);
+        console.log('✅ Health alerts table created successfully');
+      } catch (error) {
+        console.error('Error in migration 9:', error);
+        throw error;
+      }
     }
   }
 ];
@@ -213,23 +223,30 @@ async function runMigrations() {
     const currentVersion = result?.version || 0;
     console.log(`📊 Current database version: ${currentVersion}`);
 
-    // Run pending migrations
+    // Run pending migrations with better error handling
     for (const migration of migrations) {
       if (migration.version > currentVersion) {
-        console.log(`🔄 Running migration ${migration.version}: ${migration.name}`);
-        await migration.up();
-        await runQuery(
-          'INSERT INTO schema_migrations (version, name) VALUES (?, ?)',
-          [migration.version, migration.name]
-        );
-        console.log(`✅ Migration ${migration.version} completed`);
+        try {
+          console.log(`🔄 Running migration ${migration.version}: ${migration.name}`);
+          await migration.up();
+          await runQuery(
+            'INSERT INTO schema_migrations (version, name) VALUES (?, ?)',
+            [migration.version, migration.name]
+          );
+          console.log(`✅ Migration ${migration.version} completed`);
+        } catch (migrationError) {
+          console.error(`❌ Migration ${migration.version} failed:`, migrationError.message);
+          // Continue with other migrations instead of crashing
+          continue;
+        }
       }
     }
 
     console.log('✅ All migrations completed');
   } catch (error) {
     console.error('❌ Migration error:', error);
-    throw error;
+    // Don't throw error, just log it
+    console.log('⚠️ Continuing with application startup...');
   }
 }
 

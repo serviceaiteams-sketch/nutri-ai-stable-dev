@@ -1,7 +1,8 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const bcrypt = require('bcryptjs');
 // Database file path
-const dbPath = path.join(__dirname, '../../data/nutriai.db');
+const dbPath = path.join(__dirname, '../data/nutriai.db');
 
 // Create database connection
 const db = new sqlite3.Database(dbPath, (err) => {
@@ -973,15 +974,40 @@ async function initializeTables() {
     console.log('✅ Database tables initialized');
     
     // Run migrations for additional improvements
-    const { runMigrations } = require('./database-migrations');
-    await runMigrations();
+    try {
+      const { runMigrations } = require('./database-migrations');
+      await runMigrations();
+    } catch (migrationError) {
+      console.error('⚠️ Migration error (continuing):', migrationError.message);
+    }
     
     // Seed recipes after tables and migrations are complete
-    const { seedRecipes } = require('../data/seed_recipes');
-    await seedRecipes(runQuery);
+    try {
+      const { seedRecipes } = require('../data/seed_recipes');
+      await seedRecipes(runQuery);
+    } catch (seedError) {
+      console.error('⚠️ Recipe seeding error (continuing):', seedError.message);
+    }
+
+    // Seed a default demo user for development convenience
+    try {
+      const demoEmail = 'test@example.com';
+      const existing = await getRow('SELECT id FROM users WHERE email = ?', [demoEmail]);
+      if (!existing) {
+        const hashed = await bcrypt.hash('password123', 12);
+        const result = await runQuery(
+          `INSERT INTO users (email, password, name, age) VALUES (?, ?, ?, ?)`,
+          [demoEmail, hashed, 'Test User', 30]
+        );
+        console.log(`👤 Seeded demo user: ${demoEmail} (id=${result.id})`);
+      }
+    } catch (userSeedError) {
+      console.error('⚠️ Demo user seeding error (continuing):', userSeedError.message);
+    }
   } catch (error) {
     console.error('❌ Error initializing database tables:', error);
-    throw error;
+    // Don't throw error, just log it
+    console.log('⚠️ Continuing with application startup...');
   }
 }
 

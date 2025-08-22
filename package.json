@@ -9,7 +9,11 @@
     "client": "cd client && npm start",
     "build": "cd client && npm run build",
     "install-all": "npm install && cd client && npm install",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "pm2:start": "npx pm2 start ecosystem.config.js",
+    "pm2:stop": "npx pm2 delete all || true",
+    "pm2:logs": "npx pm2 logs",
+    "pm2:restart": "npx pm2 reload ecosystem.config.js --env production"
   },
   "keywords": [
     "nutrition",
@@ -37,8 +41,8 @@
     "multer": "^2.0.2",
     "openai": "^5.12.2",
     "pdf-parse": "^1.1.1",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-router": "^7.8.0",
     "react-scripts": "^5.0.1",
     "sharp": "^0.34.3",

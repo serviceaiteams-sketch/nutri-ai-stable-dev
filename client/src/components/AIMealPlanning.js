@@ -37,6 +37,30 @@ const AIMealPlanning = () => {
     generateMealPlan();
   }, [selectedWeek, preferences]);
 
+  const normalizeShoppingList = (raw) => {
+    try {
+      // Case 1: Already an array of categories
+      if (Array.isArray(raw)) {
+        return raw.map((cat) => ({
+          category: cat.category || 'Other',
+          items: (cat.items || []).map((it) => (
+            typeof it === 'string' ? { name: it, checked: false } : { name: it.name || String(it), checked: !!it.checked }
+          ))
+        }));
+      }
+      // Case 2: Object map of category -> items
+      if (raw && typeof raw === 'object') {
+        return Object.entries(raw).map(([category, items]) => ({
+          category,
+          items: (items || []).map((it) => (
+            typeof it === 'string' ? { name: it, checked: false } : { name: it.name || String(it), checked: !!it.checked }
+          ))
+        }));
+      }
+    } catch {}
+    return [];
+  };
+
   const generateMealPlan = async () => {
     try {
       setLoading(true);
@@ -46,14 +70,14 @@ const AIMealPlanning = () => {
       }, authHeaders());
 
       setMealPlan(response.data.mealPlan);
-      setShoppingList(response.data.shoppingList);
+      setShoppingList(normalizeShoppingList(response.data.shoppingList));
       toast.success('Meal plan generated successfully!');
     } catch (error) {
       console.error('Error generating meal plan:', error);
       toast.error('Failed to generate meal plan');
       // Set mock data for demonstration
       setMealPlan(getMockMealPlan());
-      setShoppingList(getMockShoppingList());
+      setShoppingList(normalizeShoppingList(getMockShoppingList()));
     } finally {
       setLoading(false);
     }
@@ -155,13 +179,12 @@ const AIMealPlanning = () => {
   ];
 
   const toggleShoppingItem = (categoryIndex, itemIndex) => {
-    const newShoppingList = [...shoppingList];
-    if (!newShoppingList[categoryIndex].items[itemIndex].checked) {
-      newShoppingList[categoryIndex].items[itemIndex].checked = true;
-    } else {
-      newShoppingList[categoryIndex].items[itemIndex].checked = false;
-    }
-    setShoppingList(newShoppingList);
+    setShoppingList((prev) => {
+      const copy = prev.map((c) => ({ ...c, items: c.items.map((i) => ({ ...i })) }));
+      const item = copy[categoryIndex]?.items?.[itemIndex];
+      if (item) item.checked = !item.checked;
+      return copy;
+    });
   };
 
   const printMealPlan = () => {
@@ -393,11 +416,11 @@ const AIMealPlanning = () => {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {shoppingList.map((category, categoryIndex) => (
+                {(Array.isArray(shoppingList) ? shoppingList : []).map((category, categoryIndex) => (
                   <div key={categoryIndex} className="border border-gray-200 rounded-lg p-4">
                     <h3 className="font-semibold text-gray-900 mb-3">{category.category}</h3>
                     <div className="space-y-2">
-                      {category.items.map((item, itemIndex) => (
+                      {(category.items || []).map((item, itemIndex) => (
                         <div
                           key={itemIndex}
                           className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
@@ -411,7 +434,7 @@ const AIMealPlanning = () => {
                             {item.checked && <FaCheck className="text-white text-xs" />}
                           </div>
                           <span className={`flex-1 ${item.checked ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                            {item}
+                            {item.name || String(item)}
                           </span>
                         </div>
                       ))}

@@ -10,10 +10,104 @@ const axios = require('axios');
 // OpenAI API configuration
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_KEY_PLACEHOLDER = !OPENAI_API_KEY ? false : /your-openai-api-key-here/i.test(OPENAI_API_KEY);
-const HAS_VALID_OPENAI_KEY = !!(OPENAI_API_KEY && !OPENAI_KEY_PLACEHOLDER);
+const OPENAI_KEY_CONFIGURED = !!(OPENAI_API_KEY && !OPENAI_KEY_PLACEHOLDER);
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
+// We'll set this to true only after testing the API key
+let HAS_VALID_OPENAI_KEY = false;
+
+// Test the API key on startup
+async function testOpenAIKey() {
+  if (!OPENAI_KEY_CONFIGURED) {
+    HAS_VALID_OPENAI_KEY = false;
+    return;
+  }
+
+  try {
+    const testResponse = await axios.post(
+      OPENAI_API_URL,
+      {
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: 'Hello' }],
+        max_tokens: 5
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    HAS_VALID_OPENAI_KEY = true;
+    console.log('✅ OpenAI API key validated successfully');
+  } catch (error) {
+    HAS_VALID_OPENAI_KEY = false;
+    console.log('❌ OpenAI API key validation failed:', error.response?.data?.error?.message || error.message);
+  }
+}
+
+// Test the key on startup
+testOpenAIKey();
+
 const router = express.Router();
+
+// AI Service Health Check
+router.get('/health', async (req, res) => {
+  try {
+    const healthStatus = {
+      service: 'NutriAI AI Service',
+      status: 'operational',
+      timestamp: new Date().toISOString(),
+      openai: {
+        configured: !!OPENAI_API_KEY,
+        valid_key: HAS_VALID_OPENAI_KEY,
+        key_format: OPENAI_API_KEY ? 'valid' : 'missing',
+        placeholder_detected: OPENAI_API_KEY ? /your-openai-api-key-here/i.test(OPENAI_API_KEY) : false
+      },
+      features: {
+        chat: HAS_VALID_OPENAI_KEY ? 'enabled' : 'demo_mode',
+        food_recognition: HAS_VALID_OPENAI_KEY ? 'enabled' : 'demo_mode',
+        nutrition_analysis: HAS_VALID_OPENAI_KEY ? 'enabled' : 'demo_mode'
+      }
+    };
+
+    // Test OpenAI API if key is configured
+    if (OPENAI_KEY_CONFIGURED) {
+      try {
+        const testResponse = await axios.post(
+          OPENAI_API_URL,
+          {
+            model: 'gpt-4o-mini',
+            messages: [{ role: 'user', content: 'Hello' }],
+            max_tokens: 5
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${OPENAI_API_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        healthStatus.openai.test_result = 'success';
+        healthStatus.openai.response_time = testResponse.headers['x-request-id'] ? 'normal' : 'normal';
+      } catch (testError) {
+        healthStatus.openai.test_result = 'failed';
+        healthStatus.openai.error_code = testError.response?.data?.error?.code || 'unknown';
+        healthStatus.openai.error_message = testError.response?.data?.error?.message || testError.message;
+      }
+    }
+
+    res.json(healthStatus);
+  } catch (error) {
+    console.error('AI health check error:', error);
+    res.status(500).json({
+      service: 'NutriAI AI Service',
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 // Simple file-based cache for image recognition results
 const CACHE_DIR = path.join(__dirname, '../data');
@@ -99,7 +193,7 @@ router.post('/recognize-food', upload.single('image'), async (req, res) => {
 
     // Use OpenAI for food recognition if key is configured, otherwise simulate
     let recognizedFoods = [];
-    if (HAS_VALID_OPENAI_KEY) {
+    if (OPENAI_KEY_CONFIGURED) {
       recognizedFoods = await recognizeFoodWithOpenAI(imagePath + '_processed');
     } else {
       recognizedFoods = await simulateFoodRecognition(imagePath + '_processed');
@@ -116,7 +210,7 @@ router.post('/recognize-food', upload.single('image'), async (req, res) => {
     }
 
     // Get nutrition data for recognized foods using OpenAI or fallback
-    const nutritionData = HAS_VALID_OPENAI_KEY
+    const nutritionData = OPENAI_KEY_CONFIGURED
       ? await getNutritionDataWithOpenAI(recognizedFoods)
       : await getNutritionData(recognizedFoods);
 
@@ -653,7 +747,15 @@ router.post('/classify-meal', async (req, res) => {
 // Add conversational chat endpoint for NutriAI assistant
 router.post('/chat', async (req, res) => {
   try {
-    const { messages = [], systemPrompt, model } = req.body || {};
+    const { messages = [], systemPrompt, model, message } = req.body || {};
+
+    // Handle both old format (single message) and new format (messages array)
+    let userMessage = '';
+    if (messages && messages.length > 0) {
+      userMessage = messages[messages.length - 1]?.content?.toLowerCase() || '';
+    } else if (message) {
+      userMessage = message.toLowerCase();
+    }
 
     const openAiMessages = [];
     openAiMessages.push({
@@ -672,32 +774,119 @@ router.post('/chat', async (req, res) => {
       });
     }
 
-    if (!HAS_VALID_OPENAI_KEY) {
-      const canned = 'AI features are running in demo mode. Upload a clear food photo or ask nutrition questions. To enable full AI, set OPENAI_API_KEY in .env and restart.';
-      return res.json({ reply: canned, demo: true });
+    // If we have a single message, add it to the conversation
+    if (message && !messages.length) {
+      openAiMessages.push({
+        role: 'user',
+        content: String(message).slice(0, 8000)
+      });
     }
 
-    const response = await axios.post(
-      OPENAI_API_URL,
-      {
-        model: model || 'gpt-4o-mini',
-        messages: openAiMessages,
-        temperature: 0.3,
-        max_tokens: 600
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
+    // Check if we have a valid OpenAI API key
+    if (!HAS_VALID_OPENAI_KEY) {
+      // Provide helpful fallback responses for common questions
+      let fallbackResponse = "I'm currently running in demo mode. Here are some helpful nutrition tips:\n\n";
+      
+      if (userMessage.includes('hello') || userMessage.includes('hi') || userMessage.includes('hey')) {
+        fallbackResponse = "👋 Hello! I'm NutriAI, your nutrition assistant. I can help you with:\n";
+        fallbackResponse += "• Meal planning and nutrition advice\n";
+        fallbackResponse += "• Food recognition and analysis\n";
+        fallbackResponse += "• Health and wellness tips\n";
+        fallbackResponse += "• Workout recommendations\n\n";
+        fallbackResponse += "To enable full AI features, please check your OpenAI API key configuration.";
+      } else if (userMessage.includes('nutrition') || userMessage.includes('diet') || userMessage.includes('food') || userMessage.includes('eat')) {
+        fallbackResponse = "🍎 General Nutrition Tips:\n\n";
+        fallbackResponse += "• Eat a variety of colorful fruits and vegetables\n";
+        fallbackResponse += "• Include lean proteins in each meal\n";
+        fallbackResponse += "• Choose whole grains over refined grains\n";
+        fallbackResponse += "• Stay hydrated with water throughout the day\n";
+        fallbackResponse += "• Limit added sugars and processed foods\n\n";
+        fallbackResponse += "For personalized nutrition advice, please ensure your OpenAI API key is properly configured.";
+      } else if (userMessage.includes('workout') || userMessage.includes('exercise') || userMessage.includes('fitness') || userMessage.includes('train')) {
+        fallbackResponse = "💪 Fitness Recommendations:\n\n";
+        fallbackResponse += "• Aim for 150 minutes of moderate exercise weekly\n";
+        fallbackResponse += "• Include strength training 2-3 times per week\n";
+        fallbackResponse += "• Stay active throughout the day\n";
+        fallbackResponse += "• Listen to your body and rest when needed\n\n";
+        fallbackResponse += "For personalized workout plans, please ensure your OpenAI API key is properly configured.";
+      } else {
+        fallbackResponse = "I'd be happy to help with your nutrition and wellness questions! ";
+        fallbackResponse += "For personalized AI assistance, please ensure your OpenAI API key is properly configured.";
       }
-    );
+      
+      return res.json({ 
+        reply: fallbackResponse, 
+        demo: true,
+        message: "Running in demo mode due to API key validation failure"
+      });
+    }
 
-    const reply = response.data?.choices?.[0]?.message?.content || '';
-    return res.json({ reply, raw: response.data });
+    // Validate API key format before making the request
+    if (!OPENAI_API_KEY || OPENAI_API_KEY.includes('your-openai-api-key-here')) {
+      return res.status(400).json({
+        error: 'api_key_missing',
+        message: 'OpenAI API key is not properly configured. Please check your .env file.',
+        reply: "I'm having trouble connecting to my AI services. Please check your API key configuration and restart the server."
+      });
+    }
+
+    try {
+      const response = await axios.post(
+        OPENAI_API_URL,
+        {
+          model: model || 'gpt-4o-mini',
+          messages: openAiMessages,
+          temperature: 0.3,
+          max_tokens: 600
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const reply = response.data?.choices?.[0]?.message?.content || '';
+      return res.json({ reply, raw: response.data });
+    } catch (openaiError) {
+      // Handle specific OpenAI API errors
+      if (openaiError.response?.data?.error?.code === 'invalid_api_key') {
+        console.error('OpenAI API key validation failed:', openaiError.response.data.error);
+        return res.status(401).json({
+          error: 'invalid_api_key',
+          message: 'OpenAI API key is invalid or expired. Please check your API key and account status.',
+          reply: "I'm experiencing authentication issues with my AI services. Please verify your OpenAI API key is valid and your account is active."
+        });
+      } else if (openaiError.response?.data?.error?.code === 'rate_limit_exceeded') {
+        return res.status(429).json({
+          error: 'rate_limit_exceeded',
+          message: 'OpenAI API rate limit exceeded. Please try again later.',
+          reply: "I'm currently experiencing high demand. Please try again in a few minutes."
+        });
+      } else if (openaiError.response?.data?.error?.code === 'insufficient_quota') {
+        return res.status(402).json({
+          error: 'insufficient_quota',
+          message: 'OpenAI API quota exceeded. Please check your billing status.',
+          reply: "I've reached my usage limits. Please check your OpenAI account billing status."
+        });
+      } else {
+        // Generic OpenAI error
+        console.error('OpenAI API error:', openaiError.response?.data || openaiError.message);
+        return res.status(500).json({
+          error: 'openai_error',
+          message: 'OpenAI service temporarily unavailable. Please try again later.',
+          reply: "I'm experiencing technical difficulties. Please try again in a few moments."
+        });
+      }
+    }
   } catch (err) {
     console.error('AI chat error:', err?.response?.data || err.message);
-    return res.status(500).json({ error: 'chat_failed', message: err?.response?.data || err.message });
+    return res.status(500).json({ 
+      error: 'chat_failed', 
+      message: err?.response?.data || err.message,
+      reply: "I encountered an unexpected error. Please try again or contact support if the issue persists."
+    });
   }
 });
 

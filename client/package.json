@@ -53,6 +53,6 @@
     "postcss": "^8.4.31",
     "webpack-dev-server": "^5.2.0"
   },
-  "proxy": "http://localhost:5000",
+  "proxy": "http://localhost:5001",
   "devDependencies": {}
 }

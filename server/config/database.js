@@ -66,6 +66,14 @@ async function initializeTables() {
         avatar TEXT,
         phone TEXT,
         age INTEGER,
+        gender TEXT,
+        height REAL,
+        weight REAL,
+        activity_level TEXT DEFAULT 'moderate',
+        health_goal TEXT DEFAULT 'maintenance',
+        dietary_preferences TEXT,
+        allergies TEXT,
+        medical_conditions TEXT,
         current_weight REAL,
         target_weight REAL,
         weight_unit TEXT DEFAULT 'kg',
@@ -270,8 +278,9 @@ async function initializeTables() {
       CREATE TABLE IF NOT EXISTS hydration_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
-        amount INTEGER NOT NULL,            -- number of glasses (can be negative for adjustments)
-        unit TEXT DEFAULT 'glass',
+        amount INTEGER NOT NULL,
+        type TEXT DEFAULT 'water',
+        notes TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id)
       )
@@ -282,7 +291,22 @@ async function initializeTables() {
       CREATE TABLE IF NOT EXISTS steps_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
-        amount INTEGER NOT NULL,
+        steps INTEGER NOT NULL,
+        activity_type TEXT DEFAULT 'walking',
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      )
+    `);
+
+    // Health reports table
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS health_reports (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        filename TEXT NOT NULL,
+        file_size INTEGER,
+        health_conditions TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id)
       )

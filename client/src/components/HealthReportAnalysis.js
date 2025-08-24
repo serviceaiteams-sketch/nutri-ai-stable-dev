@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaUpload, FaFileMedical, FaChartLine, FaHeart,
@@ -298,6 +298,77 @@ const HealthReportAnalysis = () => {
       default: return 'border-gray-200 bg-gray-50';
     }
   };
+
+  // ===== Lab Parsing & Highlighting Helpers =====
+  const extractNumbersSection = (text) => {
+    if (!text) return '';
+    const start = text.indexOf('**NUMBERS**');
+    if (start === -1) return '';
+    // section ends at next double asterisks heading or end of string
+    const rest = text.slice(start + '**NUMBERS**'.length);
+    const nextHeader = rest.indexOf('**');
+    return nextHeader === -1 ? rest : rest.slice(0, nextHeader);
+  };
+
+  const parseRange = (s) => {
+    // expects forms like 70-99, >59, >=59
+    if (!s) return { min: undefined, max: undefined };
+    const m = s.match(/([<>]=?)?\s*([\d.]+)/);
+    if (m) {
+      const op = m[1];
+      const val = parseFloat(m[2]);
+      if (op && op.includes('>')) return { min: val, max: undefined };
+      if (op && op.includes('<')) return { min: undefined, max: val };
+    }
+    const range = s.split('-').map(v => parseFloat(v.trim()));
+    if (range.length === 2 && !isNaN(range[0]) && !isNaN(range[1])) {
+      return { min: range[0], max: range[1] };
+    }
+    return { min: undefined, max: undefined };
+  };
+
+  const parseLabLines = (section) => {
+    if (!section) return [];
+    const lines = section.split('\n').map(l => l.trim()).filter(l => l.startsWith('- '));
+    const items = [];
+    for (const line of lines) {
+      // e.g., - Glucose: 125 mg/dL (normal: 70-99)
+      const m = line.match(/^\-\s*([^:]+):\s*([^()]+)\(normal:\s*([^\)]+)\)/i);
+      if (m) {
+        const name = m[1].trim();
+        const valuePart = m[2].trim();
+        const normalPart = m[3].trim();
+        const valMatch = valuePart.match(/([\d.]+)\s*([a-zA-Z%\/]+)?|([+]+|positive|negative)/i);
+        let valueNum = undefined; let unit = '';
+        let qualitative = '';
+        if (valMatch) {
+          if (valMatch[1]) { valueNum = parseFloat(valMatch[1]); unit = (valMatch[2] || '').trim(); }
+          else if (valMatch[3]) { qualitative = (valMatch[3] || '').toLowerCase(); }
+        }
+        const range = parseRange(normalPart);
+        let status = 'normal';
+        if (!isNaN(valueNum)) {
+          if (typeof range.min === 'number' && valueNum < range.min) status = 'low';
+          if (typeof range.max === 'number' && valueNum > range.max) status = 'high';
+        } else if (normalPart.toLowerCase().includes('negative')) {
+          status = (qualitative.includes('+') || qualitative.includes('positive')) ? 'high' : 'normal';
+        }
+        items.push({ name, value: isNaN(valueNum) ? (qualitative || valuePart.trim()) : valueNum, unit, range, status });
+      }
+    }
+    return items;
+  };
+
+  const labBadges = {
+    high: 'bg-red-100 text-red-700 border border-red-200',
+    low: 'bg-blue-100 text-blue-700 border border-blue-200',
+    normal: 'bg-green-100 text-green-700 border border-green-200'
+  };
+
+  const parsedLabs = useMemo(() => {
+    const section = extractNumbersSection(analysisResults?.analysis || '');
+    return parseLabLines(section);
+  }, [analysisResults]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -637,101 +708,12 @@ const HealthReportAnalysis = () => {
                 </div>
 
                 {foodRecommendations ? (
-                  <div className="space-y-6">
-                    {/* Food Recommendations by Category */}
-                    {foodRecommendations.recommendations?.map((category, index) => (
-                      <div key={index} className="border border-green-200 rounded-lg p-4 bg-green-50">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3 capitalize">{category.category} Recommendations</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {category.foods?.map((food, foodIndex) => (
-                            <div key={foodIndex} className="bg-white rounded-lg p-3 border border-green-100">
-                              <h4 className="font-medium text-gray-900">{food.name}</h4>
-                              <p className="text-sm text-gray-600 mt-1">{food.benefit}</p>
-                              <div className="flex justify-between text-xs text-gray-500 mt-2">
-                                <span>Portion: {food.portion}</span>
-                                <span>Frequency: {food.frequency}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-
-                    {/* General Guidelines */}
-                    {foodRecommendations.generalGuidelines?.length > 0 && (
-                      <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3">General Dietary Guidelines</h3>
-                        <ul className="list-disc ml-5 space-y-1">
-                          {foodRecommendations.generalGuidelines.map((guideline, index) => (
-                            <li key={index} className="text-gray-700">{guideline}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Foods to Limit */}
-                    {foodRecommendations.foodsToLimit?.length > 0 && (
-                      <div className="border border-yellow-200 rounded-lg p-4 bg-yellow-50">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3">Foods to Limit</h3>
-                        <div className="space-y-2">
-                          {foodRecommendations.foodsToLimit.map((food, index) => (
-                            <div key={index} className="bg-white rounded-lg p-3 border border-yellow-100">
-                              <h4 className="font-medium text-gray-900">{food.name}</h4>
-                              <p className="text-sm text-gray-600 mt-1">{food.reason}</p>
-                              {food.alternative && (
-                                <p className="text-sm text-green-600 mt-1">
-                                  <strong>Alternative:</strong> {food.alternative}
-                                </p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Supplements */}
-                    {foodRecommendations.supplements?.length > 0 && (
-                      <div className="border border-purple-200 rounded-lg p-4 bg-purple-50">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3">Supplement Recommendations</h3>
-                        <div className="space-y-2">
-                          {foodRecommendations.supplements.map((supplement, index) => (
-                            <div key={index} className="bg-white rounded-lg p-3 border border-purple-100">
-                              <h4 className="font-medium text-gray-900">{supplement.name}</h4>
-                              <p className="text-sm text-gray-600 mt-1">{supplement.benefit}</p>
-                              <div className="flex justify-between text-xs text-gray-500 mt-2">
-                                <span>Dosage: {supplement.dosage}</span>
-                                {supplement.note && <span className="text-purple-600">{supplement.note}</span>}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <CuisineViewer markdown={foodRecommendations} />
                 ) : (
                   <div className="text-center py-8">
                     <FaAppleAlt className="mx-auto text-gray-400 text-4xl mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Get Personalized Food Recommendations</h3>
-                    <p className="text-gray-600 mb-4">
-                      Based on your health reports and conditions, we'll provide personalized food recommendations to support your health goals.
-                    </p>
-                    <button
-                      onClick={fetchFoodRecommendations}
-                      disabled={isLoadingFoodRecs}
-                      className="inline-flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isLoadingFoodRecs ? (
-                        <>
-                          <FaSpinner className="animate-spin" />
-                          <span>Generating Recommendations...</span>
-                        </>
-                      ) : (
-                        <>
-                          <FaAppleAlt />
-                          <span>Generate Food Recommendations</span>
-                        </>
-                      )}
-                    </button>
+                    <p className="text-gray-500">Click the button above to generate AI-powered food recommendations based on your health conditions</p>
                   </div>
                 )}
               </div>
@@ -783,24 +765,37 @@ const HealthReportAnalysis = () => {
                         </span>
                       </div>
                       <div className="text-sm text-gray-700">
-                        <p className="mb-2"><strong>Summary:</strong> {analysisResults.analysisSummary || 'Analysis completed'}</p>
-                        {analysisResults.findings && analysisResults.findings.length > 0 ? (
-                          <div>
-                            <p className="font-medium mt-2">Key Findings:</p>
-                            <ul className="list-disc ml-5">
-                              {analysisResults.findings.map((finding, i) => (
-                                <li key={i} className={`${
-                                  finding.type === 'warning' ? 'text-yellow-700' :
-                                  finding.type === 'danger' ? 'text-red-700' :
-                                  finding.type === 'success' ? 'text-green-700' : 'text-blue-700'
-                                }`}>
-                                  {finding.title}: {finding.description}
-                                </li>
-                              ))}
-                            </ul>
+                        <p className="mb-2"><strong>Summary:</strong> {analysisResults.message || 'Analysis completed'}</p>
+                        {analysisResults.analysis ? (
+                          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                            <p className="font-medium mb-2">AI Analysis:</p>
+                            <div className="text-sm whitespace-pre-line">{analysisResults.analysis}</div>
                           </div>
                         ) : (
-                          <p className="text-green-700">✅ No significant findings - results appear normal</p>
+                          <p className="text-green-700">✅ Analysis completed successfully</p>
+                        )}
+
+                        {/* Lab Highlights */}
+                        {parsedLabs.length > 0 && (
+                          <div className="mt-5">
+                            <p className="font-semibold text-gray-900 mb-3">Highlighted Labs</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {parsedLabs.map((lab, idx) => (
+                                <div key={idx} className={`rounded-lg px-4 py-3 ${labBadges[lab.status]}`}>
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-semibold">{lab.name}</span>
+                                    <span className="text-xs capitalize">{lab.status}</span>
+                                  </div>
+                                  <div className="mt-1 text-sm">
+                                    <span className="font-medium">{String(lab.value)} {lab.unit}</span>
+                                    { (lab.range.min !== undefined || lab.range.max !== undefined) && (
+                                      <span className="ml-2 text-gray-700">(norm: {lab.range.min !== undefined ? lab.range.min : '–'}{(lab.range.min !== undefined || lab.range.max !== undefined) && '-'}{lab.range.max !== undefined ? lab.range.max : '–'})</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -859,72 +854,32 @@ const HealthReportAnalysis = () => {
                       <h3 className="text-lg font-semibold text-gray-900 mb-4">Analysis Summary</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="bg-white rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold text-blue-600">{analysisResults.totalReports || 0}</div>
+                          <div className="text-2xl font-bold text-blue-600">{analysisResults.reportsCount || 0}</div>
                           <div className="text-sm text-gray-600">Reports Analyzed</div>
                         </div>
                         <div className="bg-white rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold text-green-600">{analysisResults.normalMetrics || 0}</div>
-                          <div className="text-sm text-gray-600">Normal Metrics</div>
+                          <div className="text-2xl font-bold text-green-600">{analysisResults.conditionsCount || 0}</div>
+                          <div className="text-sm text-gray-600">Health Conditions</div>
                         </div>
                         <div className="bg-white rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold text-yellow-600">{analysisResults.attentionNeeded || 0}</div>
-                          <div className="text-sm text-gray-600">Need Attention</div>
+                          <div className="text-2xl font-bold text-yellow-600">{analysisResults.analysis ? 1 : 0}</div>
+                          <div className="text-sm text-gray-600">Analysis Complete</div>
                         </div>
                       </div>
                     </div>
 
                     {/* Key Findings */}
-                    <div className="bg-white rounded-xl border border-gray-200 p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Key Findings</h3>
-                      <div className="space-y-4">
-                        {analysisResults.findings?.map((finding, index) => (
-                          <motion.div
-                            key={index}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg"
-                          >
-                            <div className={`w-2 h-2 rounded-full mt-2 ${
-                              finding.type === 'warning' ? 'bg-yellow-500' :
-                              finding.type === 'danger' ? 'bg-red-500' :
-                              finding.type === 'success' ? 'bg-green-500' : 'bg-blue-500'
-                            }`} />
-                            <div>
-                              <p className="font-medium text-gray-900">{finding.title}</p>
-                              <p className="text-gray-600 text-sm">{finding.description}</p>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
+                    {/* Removed duplicate AI Analysis Results panel to avoid double display */}
 
-                    {/* Recommendations */}
-                    <div className="bg-white rounded-xl border border-gray-200 p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Recommendations</h3>
-                      <div className="space-y-4">
-                        {analysisResults.recommendations?.map((rec, index) => (
-                          <motion.div
-                            key={index}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg border border-blue-200"
-                          >
-                            <FaShieldAlt className="text-blue-500 mt-1" />
-                            <div>
-                              <p className="font-medium text-gray-900">{rec.title}</p>
-                              <p className="text-gray-600 text-sm">{rec.description}</p>
-                              {rec.action && (
-                                <button className="mt-2 text-blue-600 hover:text-blue-700 text-sm font-medium">
-                                  {rec.action}
-                                </button>
-                              )}
-                            </div>
-                          </motion.div>
-                        ))}
+                    {/* Food Recommendations from Health Conditions */}
+                    {foodRecommendations && (
+                      <div className="bg-white rounded-xl border border-gray-200 p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Food Recommendations</h3>
+                        <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                          <div className="text-sm whitespace-pre-line text-gray-700">{foodRecommendations}</div>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-12">
@@ -1063,5 +1018,68 @@ const HealthReportAnalysis = () => {
     </div>
   );
 };
+
+// Simple parser to split Top 10 cuisines out of markdown text
+function CuisineViewer({ markdown }) {
+  const [active, setActive] = React.useState(null);
+  const sections = useMemo(() => {
+    const topIndex = markdown.indexOf('TOP 10 CUISINES');
+    if (topIndex === -1) return { intro: markdown, cuisines: [] };
+    const intro = markdown.slice(0, topIndex).trim();
+    const rest = markdown.slice(topIndex).trim();
+    // collect bullet lines 1) .. 10)
+    const lines = rest.split('\n');
+    const cuisines = [];
+    for (const line of lines) {
+      const m = line.match(/^\d+\)\s*([^—\-:]+)[—\-:]+\s*(.*)$/);
+      if (m) cuisines.push({ name: m[1].trim(), reason: m[2].trim() });
+      if (cuisines.length === 10) break;
+    }
+    return { intro, cuisines };
+  }, [markdown]);
+
+  const cuisineContent = useMemo(() => {
+    if (!active) return '';
+    // naive slice from cuisine name to next cuisine marker or end
+    const start = markdown.indexOf(active);
+    if (start === -1) return '';
+    const after = markdown.slice(start);
+    const next = after.slice(active.length).search(/\n\d+\)\s/);
+    return next === -1 ? after : after.slice(0, next + active.length);
+  }, [active, markdown]);
+
+  return (
+    <div className="space-y-6">
+      <div className="border border-green-200 rounded-lg p-6 bg-green-50">
+        <h3 className="text-lg font-semibold text-gray-900 mb-3">General Strategy</h3>
+        <div className="whitespace-pre-line text-gray-700">{sections.intro}</div>
+      </div>
+      {sections.cuisines.length > 0 && (
+        <div className="border border-green-200 rounded-lg p-6 bg-white">
+          <h4 className="font-semibold text-gray-900 mb-3">Top Cuisines</h4>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {sections.cuisines.map(c => (
+              <button
+                key={c.name}
+                onClick={() => setActive(c.name)}
+                className={`px-3 py-1 rounded-full border text-sm ${active === c.name ? 'bg-green-600 text-white border-green-600' : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'}`}
+                title={c.reason}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+          {active ? (
+            <div className="p-4 bg-green-50 rounded border border-green-200 whitespace-pre-line text-gray-800">
+              {cuisineContent || 'Select a cuisine to view examples'}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-600">Select a cuisine to view 3 sample meals with portions.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default HealthReportAnalysis; 

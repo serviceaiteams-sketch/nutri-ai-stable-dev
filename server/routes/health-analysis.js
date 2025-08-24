@@ -91,7 +91,7 @@ Format the response as a clear, actionable list.`;
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 500
+      max_tokens: 400
     });
 
     const recommendations = completion.choices[0].message.content;
@@ -155,22 +155,19 @@ router.post('/analyze-reports', authenticateToken, async (req, res) => {
     );
     
     // Generate AI analysis using OpenAI
-    const prompt = `Analyze the following health reports and provide insights:
+    const prompt = `As a medical professional, provide a personalized health assessment based on the user's health conditions and report upload patterns:
 
-Health Reports:
-${reports.map(r => `- ${r.filename} (${r.file_size} bytes, uploaded: ${r.uploaded_at})`).join('\n')}
+Health Conditions: ${conditions.map(c => `- ${c.condition_name} (${c.severity || 'mild'})`).join('\n') || 'No specific conditions reported'}
+Reports Uploaded: ${reports.map(r => `- ${r.filename} (${r.file_size} bytes, uploaded: ${r.uploaded_at})`).join('\n')}
 
-User's Health Conditions:
-${conditions.map(c => `- ${c.condition_name} (${c.severity || 'mild'})`).join('\n') || 'None specified'}
+Provide a personalized health assessment in this format:
 
-Please provide:
-1. Summary of uploaded reports
-2. Key health insights
-3. Recommendations for follow-up
-4. Any concerning patterns
-5. Suggested next steps
+**SUMMARY**: Brief assessment considering the user's health conditions and monitoring patterns
+**KEY FINDINGS**: Health-specific observations and any concerning patterns
+**RECOMMENDATIONS**: Personalized health management steps based on their conditions
+**CONCERNS**: Any health-related concerns that need immediate attention
 
-Format as a clear, actionable analysis.`;
+Focus on the user's specific health conditions and provide actionable medical advice.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -216,27 +213,34 @@ router.post('/food-recommendations', authenticateToken, async (req, res) => {
       [userId]
     );
     
-    const prompt = `As a nutritionist, provide personalized food recommendations based on:
+    const prompt = `As a clinical nutritionist, provide personalized meal plans and dietary recommendations based on the user's health conditions:
 
 User's Health Conditions:
-${conditions.map(c => `- ${c.condition_name} (${c.severity || 'mild'})`).join('\n') || 'None specified'}
+${conditions.map(c => `- ${c.condition_name} (${c.severity || 'mild'})`).join('\n') || 'No specific conditions reported'}
 
 Recent Meals:
-${recentMeals.map(m => `- ${m.food_name} (${m.calories} cal)`).join('\n') || 'No recent meals'}
+${recentMeals.map(m => `- ${m.food_name} (${m.calories} cal)`).join('\n') || 'No recent meals recorded'}
 
-Please provide:
-1. Recommended foods to include
-2. Foods to avoid or limit
-3. Meal timing suggestions
-4. Portion size guidance
-5. Any specific nutrients to focus on
+Provide a comprehensive meal plan in this format:
 
-Make the recommendations practical and actionable.`;
+**DAILY MEAL PLAN**:
+- Breakfast: [specific foods with portions]
+- Lunch: [specific foods with portions]  
+- Dinner: [specific foods with portions]
+- Snacks: [healthy options]
+
+**FOODS TO INCLUDE**: [condition-specific recommendations]
+**FOODS TO AVOID**: [condition-specific restrictions]
+**NUTRITIONAL FOCUS**: [specific nutrients for their conditions]
+**MEAL TIMING**: [optimal eating schedule]
+**PORTION GUIDANCE**: [specific serving sizes]
+
+Make recommendations specific to their health conditions and provide actionable meal plans.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 600
+      max_tokens: 800
     });
 
     const recommendations = completion.choices[0].message.content;

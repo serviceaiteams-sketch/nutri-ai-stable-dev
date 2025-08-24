@@ -995,6 +995,55 @@ async function initializeTables() {
       )
     `);
 
+    // Health Approved Products table
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS health_approved_products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        gtin TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        brand TEXT NOT NULL,
+        category TEXT,
+        ingredients TEXT,
+        allergens TEXT,
+        nutrition_info TEXT, -- JSON
+        health_rating TEXT DEFAULT 'pending', -- approved, pending, rejected
+        approved_by INTEGER,
+        approval_date DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (approved_by) REFERENCES users (id)
+      )
+    `);
+
+    // User Allergies table
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS user_allergies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        allergen TEXT NOT NULL,
+        severity TEXT NOT NULL, -- mild, moderate, severe, life-threatening
+        reaction TEXT,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      )
+    `);
+
+    // Allergen Scans table
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS allergen_scans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        image_description TEXT,
+        analysis_result TEXT NOT NULL,
+        safety_score INTEGER NOT NULL, -- 0-100
+        allergen_risk TEXT NOT NULL, -- Low, Medium, High
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      )
+    `);
+
     console.log('✅ Database tables initialized');
     
     // Run migrations for additional improvements

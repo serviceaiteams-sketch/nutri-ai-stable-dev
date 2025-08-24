@@ -16,6 +16,10 @@ const notificationsRoutes = require('./routes/notifications');
 const healthAnalysisRoutes = require('./routes/health-analysis');
 const hydrationRoutes = require('./routes/hydration');
 const stepsRoutes = require('./routes/steps');
+const moodAnalysisRoutes = require('./routes/mood-analysis');
+const healthApprovedRoutes = require('./routes/health-approved');
+const allergenDetectionRoutes = require('./routes/allergen-detection');
+const advancedNutritionRoutes = require('./routes/advanced-nutrition');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -48,6 +52,10 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/health-analysis', healthAnalysisRoutes);
 app.use('/api/hydration', hydrationRoutes);
 app.use('/api/steps', stepsRoutes);
+app.use('/api/enhanced-mood-analysis', moodAnalysisRoutes);
+app.use('/api/health-approved', healthApprovedRoutes);
+app.use('/api/allergen-detection', allergenDetectionRoutes);
+app.use('/api/advanced-nutrition', advancedNutritionRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

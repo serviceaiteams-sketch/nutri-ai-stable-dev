@@ -586,14 +586,6 @@ const FoodRecognition = () => {
                 >
                   <motion.button
                     onClick={() => {
-                      setStep('recommendations');
-                    }}
-                    className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold hover:from-blue-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg"
-                  >
-                    View Smart Recommendations
-                  </motion.button>
-                  <motion.button
-                    onClick={() => {
                       setStep('upload');
                       setAnalysisResult(null);
                       setUploadedImage(null);

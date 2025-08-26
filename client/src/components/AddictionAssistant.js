@@ -167,19 +167,12 @@ export default function AddictionAssistant() {
               </div>
               <button className="text-sm text-emerald-600" onClick={() => setSelected(null)}>Back</button>
             </div>
-            <div className="mt-3 grid md:grid-cols-2 gap-4">
-              <div>
-                <div className="font-medium mb-2">Key disadvantages/risks</div>
-                <ul className="list-disc ml-5 text-sm text-gray-700 space-y-1">
-                  {selected.risks.map((r,i)=>(<li key={i}>{r}</li>))}
-                </ul>
-              </div>
-              <div>
-                <div className="font-medium mb-2">How to overcome (overview)</div>
-                <ul className="list-disc ml-5 text-sm text-gray-700 space-y-1">
-                  {selected.guidelines.map((g,i)=>(<li key={i}>{g}</li>))}
-                </ul>
-              </div>
+
+            
+            {/* Comprehensive Recovery Framework */}
+            <div className="mt-6">
+              <div className="font-semibold text-lg mb-4 text-emerald-700">📋 Comprehensive Recovery Framework</div>
+              <RecoveryFramework addictionType={selected.key} />
             </div>
           </div>
 
@@ -274,6 +267,555 @@ function PlanSummary({ planId }) {
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+// Comprehensive Recovery Framework Component
+function RecoveryFramework({ addictionType }) {
+  const recoveryData = {
+    alcohol: {
+      disadvantages: [
+        "Liver damage and cirrhosis",
+        "Poor sleep quality and insomnia",
+        "Weakened immune system",
+        "Relationship and family issues",
+        "Financial strain and job loss",
+        "Increased risk of accidents",
+        "Mental health deterioration"
+      ],
+      strategies: [
+        "Medical detox under professional supervision",
+        "Therapy: CBT, group therapy, family counseling",
+        "Join Alcoholics Anonymous (AA) or SMART Recovery",
+        "Replace drinking with healthy routines and hobbies",
+        "Build strong support network",
+        "Medication-assisted treatment if needed"
+      ],
+      monitoring: {
+        daily: [
+          "Track cravings and triggers in recovery journal",
+          "Practice mindfulness and stress management",
+          "Attend daily support meetings if possible",
+          "Check in with sponsor or accountability partner"
+        ],
+        weekly: [
+          "Therapy or counseling session",
+          "Support group attendance",
+          "Review progress and challenges",
+          "Plan activities for the week ahead"
+        ],
+        monthly: [
+          "Health checkup (liver tests, counseling progress)",
+          "Financial review and budgeting",
+          "Relationship check-ins with family",
+          "Celebrate milestones and achievements"
+        ],
+        relapsePrevention: [
+          "Avoid high-risk environments and triggers",
+          "Have emergency contact list ready",
+          "Practice refusal skills regularly",
+          "Keep recovery tools easily accessible"
+        ]
+      }
+    },
+    nicotine: {
+      disadvantages: [
+        "Lung damage and respiratory issues",
+        "Increased risk of heart disease and stroke",
+        "Poor circulation and skin aging",
+        "Financial burden over time",
+        "Social stigma and restrictions",
+        "Dependency and withdrawal symptoms"
+      ],
+      strategies: [
+        "Nicotine replacement therapy (patches, gum, lozenges)",
+        "Prescription medications (Chantix, Zyban)",
+        "Behavioral therapy and counseling",
+        "Support groups and quit smoking programs",
+        "Exercise and stress management techniques",
+        "Identify and avoid smoking triggers"
+      ],
+      monitoring: {
+        daily: [
+          "Track nicotine cravings and intensity",
+          "Use breathing exercises for stress",
+          "Stay hydrated and exercise regularly",
+          "Avoid alcohol and other triggers"
+        ],
+        weekly: [
+          "Attend quit smoking support group",
+          "Review progress and celebrate wins",
+          "Plan smoke-free activities",
+          "Check in with accountability partner"
+        ],
+        monthly: [
+          "Lung function tests",
+          "Financial savings calculation",
+          "Health improvements assessment",
+          "Plan rewards for milestones"
+        ],
+        relapsePrevention: [
+          "Keep emergency quit kit ready",
+          "Practice stress management daily",
+          "Have backup support contacts",
+          "Remember your 'why' for quitting"
+        ]
+      }
+    },
+    prescription_drugs: {
+      disadvantages: [
+        "Physical dependency and withdrawal",
+        "Overdose risk and respiratory depression",
+        "Cognitive impairment and memory issues",
+        "Financial burden of prescriptions",
+        "Legal issues and doctor shopping",
+        "Relationship and trust problems"
+      ],
+      strategies: [
+        "Medical detox in supervised facility",
+        "Medication-assisted treatment (MAT)",
+        "Individual and group therapy",
+        "Pain management alternatives",
+        "Support groups (Narcotics Anonymous)",
+        "Address underlying mental health issues"
+      ],
+      monitoring: {
+        daily: [
+          "Track medication use and cravings",
+          "Practice pain management techniques",
+          "Attend therapy or support meetings",
+          "Check in with treatment team"
+        ],
+        weekly: [
+          "Therapy sessions",
+          "Support group attendance",
+          "Progress review and goal setting",
+          "Family therapy if applicable"
+        ],
+        monthly: [
+          "Medical evaluation and drug tests",
+          "Treatment plan review",
+          "Mental health assessment",
+          "Recovery milestone celebration"
+        ],
+        relapsePrevention: [
+          "Secure medication storage",
+          "Regular drug testing",
+          "Emergency contact protocols",
+          "Crisis intervention plan"
+        ]
+      }
+    },
+    illicit_drugs: {
+      disadvantages: [
+        "Severe health consequences and overdose risk",
+        "Legal problems and criminal charges",
+        "Financial devastation",
+        "Family and relationship destruction",
+        "Mental health deterioration",
+        "Social isolation and stigma"
+      ],
+      strategies: [
+        "Inpatient rehabilitation program",
+        "Medical detox and stabilization",
+        "Intensive outpatient treatment",
+        "12-step programs and support groups",
+        "Family therapy and education",
+        "Aftercare and sober living support"
+      ],
+      monitoring: {
+        daily: [
+          "Structured daily routine",
+          "Attend treatment sessions",
+          "Practice coping skills",
+          "Check in with sponsor"
+        ],
+        weekly: [
+          "Individual and group therapy",
+          "Support group meetings",
+          "Progress assessment",
+          "Family therapy sessions"
+        ],
+        monthly: [
+          "Drug testing and evaluation",
+          "Treatment plan review",
+          "Mental health assessment",
+          "Recovery milestone tracking"
+        ],
+        relapsePrevention: [
+          "Sober living environment",
+          "Regular drug testing",
+          "Emergency protocols",
+          "Crisis intervention plan"
+        ]
+      }
+    },
+    gambling: {
+      disadvantages: [
+        "Financial ruin and debt",
+        "Family and relationship breakdown",
+        "Legal problems and job loss",
+        "Mental health issues (depression, anxiety)",
+        "Social isolation and stigma",
+        "Physical health neglect"
+      ],
+      strategies: [
+        "Gamblers Anonymous (GA) meetings",
+        "Financial counseling and debt management",
+        "Individual and family therapy",
+        "Self-exclusion programs",
+        "Financial control measures",
+        "Address underlying mental health issues"
+      ],
+      monitoring: {
+        daily: [
+          "Track urges and triggers",
+          "Practice financial mindfulness",
+          "Attend support meetings",
+          "Check in with accountability partner"
+        ],
+        weekly: [
+          "GA meetings and therapy",
+          "Financial review and budgeting",
+          "Progress assessment",
+          "Family check-ins"
+        ],
+        monthly: [
+          "Financial health review",
+          "Mental health assessment",
+          "Recovery milestone celebration",
+          "Plan future financial goals"
+        ],
+        relapsePrevention: [
+          "Self-exclusion from gambling venues",
+          "Financial control measures",
+          "Emergency support contacts",
+          "Crisis intervention plan"
+        ]
+      }
+    },
+    internet_social_media: {
+      disadvantages: [
+        "Reduced productivity and focus",
+        "Sleep disruption and insomnia",
+        "Social comparison and low self-esteem",
+        "Reduced real-world social skills",
+        "Time waste and procrastination",
+        "Mental health issues (anxiety, depression)"
+      ],
+      strategies: [
+        "Digital detox and screen time limits",
+        "App blockers and website restrictions",
+        "Mindfulness and meditation practices",
+        "Real-world social activities",
+        "Hobby development and skill building",
+        "Professional help if needed"
+      ],
+      monitoring: {
+        daily: [
+          "Track screen time usage",
+          "Practice digital mindfulness",
+          "Engage in offline activities",
+          "Set daily screen-free periods"
+        ],
+        weekly: [
+          "Screen time review and adjustment",
+          "Social activity planning",
+          "Progress assessment",
+          "Hobby development time"
+        ],
+        monthly: [
+          "Digital wellness evaluation",
+          "Social connection assessment",
+          "Productivity improvement review",
+          "Celebrate offline achievements"
+        ],
+        relapsePrevention: [
+          "App blockers and restrictions",
+          "Accountability partner check-ins",
+          "Alternative activity planning",
+          "Digital wellness reminders"
+        ]
+      }
+    },
+    gaming: {
+      disadvantages: [
+        "Excessive time consumption",
+        "Reduced physical activity",
+        "Sleep disruption and irregular patterns",
+        "Social isolation and relationship issues",
+        "Academic or work performance decline",
+        "Mental health issues (depression, anxiety)"
+      ],
+      strategies: [
+        "Set strict gaming time limits",
+        "Develop alternative hobbies and interests",
+        "Physical activity and exercise",
+        "Social activities and real-world connections",
+        "Professional help if gaming is compulsive",
+        "Family therapy and education"
+      ],
+      monitoring: {
+        daily: [
+          "Track gaming time and triggers",
+          "Practice time management",
+          "Engage in physical activities",
+          "Social interaction time"
+        ],
+        weekly: [
+          "Gaming time review",
+          "Alternative activity planning",
+          "Progress assessment",
+          "Family check-ins"
+        ],
+        monthly: [
+          "Overall wellness evaluation",
+          "Social connection assessment",
+          "Academic/work performance review",
+          "Celebrate non-gaming achievements"
+        ],
+        relapsePrevention: [
+          "Gaming time restrictions",
+          "Alternative activity planning",
+          "Accountability partner system",
+          "Wellness reminder system"
+        ]
+      }
+    },
+    pornography_sex: {
+      disadvantages: [
+        "Relationship and intimacy issues",
+        "Unrealistic expectations and standards",
+        "Mental health problems (anxiety, depression)",
+        "Reduced motivation and productivity",
+        "Social isolation and shame",
+        "Potential legal issues"
+      ],
+      strategies: [
+        "Professional therapy and counseling",
+        "Support groups (Sex Addicts Anonymous)",
+        "Relationship and intimacy counseling",
+        "Mindfulness and meditation practices",
+        "Healthy relationship building",
+        "Address underlying trauma or issues"
+      ],
+      monitoring: {
+        daily: [
+          "Track triggers and urges",
+          "Practice mindfulness techniques",
+          "Engage in healthy activities",
+          "Check in with accountability partner"
+        ],
+        weekly: [
+          "Therapy sessions",
+          "Support group attendance",
+          "Progress assessment",
+          "Relationship check-ins"
+        ],
+        monthly: [
+          "Mental health evaluation",
+          "Relationship health assessment",
+          "Recovery progress review",
+          "Celebrate relationship improvements"
+        ],
+        relapsePrevention: [
+          "Accountability partner system",
+          "Trigger avoidance strategies",
+          "Emergency support contacts",
+          "Crisis intervention plan"
+        ]
+      }
+    },
+    food: {
+      disadvantages: [
+        "Weight gain and obesity",
+        "Type 2 diabetes risk",
+        "Heart disease and high blood pressure",
+        "Low self-esteem and body image issues",
+        "Financial burden of food costs",
+        "Social isolation and shame"
+      ],
+      strategies: [
+        "Professional nutrition counseling",
+        "Therapy for emotional eating",
+        "Support groups (Overeaters Anonymous)",
+        "Mindful eating practices",
+        "Regular exercise and physical activity",
+        "Address underlying emotional issues"
+      ],
+      monitoring: {
+        daily: [
+          "Track food intake and emotions",
+          "Practice mindful eating",
+          "Regular exercise routine",
+          "Stress management techniques"
+        ],
+        weekly: [
+          "Nutrition counseling sessions",
+          "Progress assessment and goal setting",
+          "Meal planning and preparation",
+          "Support group attendance"
+        ],
+        monthly: [
+          "Health checkup and weight monitoring",
+          "Nutrition plan review",
+          "Mental health assessment",
+          "Celebrate health improvements"
+        ],
+        relapsePrevention: [
+          "Healthy food availability",
+          "Emotional support system",
+          "Alternative coping strategies",
+          "Regular health monitoring"
+        ]
+      }
+    },
+    smartphones: {
+      disadvantages: [
+        "Reduced attention span and focus",
+        "Sleep disruption and blue light exposure",
+        "Social isolation and reduced communication",
+        "Productivity and work performance decline",
+        "Physical health issues (text neck, eye strain)",
+        "Mental health problems (anxiety, FOMO)"
+      ],
+      strategies: [
+        "Digital wellness and screen time management",
+        "App usage limits and restrictions",
+        "Mindfulness and meditation practices",
+        "Real-world social activities",
+        "Hobby development and skill building",
+        "Professional help if compulsive use"
+      ],
+      monitoring: {
+        daily: [
+          "Track screen time and app usage",
+          "Practice digital mindfulness",
+          "Set phone-free periods",
+          "Engage in offline activities"
+        ],
+        weekly: [
+          "Screen time review and adjustment",
+          "Social activity planning",
+          "Progress assessment",
+          "Hobby development time"
+        ],
+        monthly: [
+          "Digital wellness evaluation",
+          "Social connection assessment",
+          "Productivity improvement review",
+          "Celebrate offline achievements"
+        ],
+        relapsePrevention: [
+          "App blockers and restrictions",
+          "Accountability partner system",
+          "Alternative activity planning",
+          "Digital wellness reminders"
+        ]
+      }
+    }
+  };
+
+  const data = recoveryData[addictionType];
+  if (!data) return null;
+
+  return (
+    <div className="space-y-6">
+      {/* Disadvantages Section */}
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <h3 className="font-semibold text-red-800 mb-3 flex items-center gap-2">
+          ⚠️ Disadvantages & Negative Effects
+        </h3>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <h4 className="font-medium text-red-700 mb-2">Physical Health</h4>
+            <ul className="list-disc ml-5 text-sm text-red-700 space-y-1">
+              {data.disadvantages.slice(0, 3).map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-medium text-red-700 mb-2">Mental & Social</h4>
+            <ul className="list-disc ml-5 text-sm text-red-700 space-y-1">
+              {data.disadvantages.slice(3).map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Overcoming Strategies Section */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+          🎯 Overcoming Strategies
+        </h3>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <h4 className="font-medium text-blue-700 mb-2">Professional Treatment</h4>
+            <ul className="list-disc ml-5 text-sm text-blue-700 space-y-1">
+              {data.strategies.slice(0, 3).map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-medium text-blue-700 mb-2">Lifestyle & Support</h4>
+            <ul className="list-disc ml-5 text-sm text-blue-700 space-y-1">
+              {data.strategies.slice(3).map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Monitoring Plan Section */}
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+        <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+          📊 Structured Monitoring Plan
+        </h3>
+        <div className="space-y-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <h4 className="font-medium text-green-700 mb-2">Daily Actions</h4>
+              <ul className="list-disc ml-5 text-sm text-green-700 space-y-1">
+                {data.monitoring.daily.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-medium text-green-700 mb-2">Weekly Actions</h4>
+              <ul className="list-disc ml-5 text-sm text-green-700 space-y-1">
+                {data.monitoring.weekly.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <h4 className="font-medium text-green-700 mb-2">Monthly Actions</h4>
+              <ul className="list-disc ml-5 text-sm text-green-700 space-y-1">
+                {data.monitoring.monthly.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-medium text-green-700 mb-2">Relapse Prevention</h4>
+              <ul className="list-disc ml-5 text-sm text-green-700 space-y-1">
+                {data.monitoring.relapsePrevention.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 } 

@@ -131,6 +131,108 @@ const HealthReportAnalysis = () => {
     }
   };
 
+  // Format AI analysis text with visual highlights
+  const formatAnalysisText = (text) => {
+    if (!text) return null;
+    
+    const sections = text.split(/(?=^[A-Z\s]+:)/m);
+    
+    return sections.map((section, index) => {
+      if (!section.trim()) return null;
+      
+      const lines = section.trim().split('\n');
+      const title = lines[0].replace(':', '');
+      const content = lines.slice(1).join('\n').trim();
+      
+      if (!content) return null;
+      
+      // Define section styles and icons
+      const sectionConfig = {
+        'SUMMARY': { icon: FaInfoCircle, color: 'from-blue-500 to-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' },
+        'KEY FINDINGS': { icon: FaExclamationTriangle, color: 'from-orange-500 to-orange-600', bgColor: 'bg-orange-50', borderColor: 'border-orange-200' },
+        'NUMBERS': { icon: FaChartLine, color: 'from-purple-500 to-purple-600', bgColor: 'bg-purple-50', borderColor: 'border-purple-200' },
+        'RECOMMENDATIONS': { icon: FaUserMd, color: 'from-green-500 to-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-200' },
+        'ALERTS': { icon: FaBell, color: 'from-red-500 to-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-200' }
+      };
+      
+      const config = sectionConfig[title] || { icon: FaInfoCircle, color: 'from-gray-500 to-gray-600', bgColor: 'bg-gray-50', borderColor: 'border-gray-200' };
+      const Icon = config.icon;
+      
+      return (
+        <div key={index} className={`p-4 rounded-lg border ${config.borderColor} ${config.bgColor}`}>
+          <div className="flex items-center space-x-3 mb-3">
+            <div className={`w-8 h-8 bg-gradient-to-r ${config.color} rounded-lg flex items-center justify-center`}>
+              <Icon className="text-white text-sm" />
+            </div>
+            <h5 className="font-semibold text-gray-900 text-lg">{title}</h5>
+          </div>
+          <div className="text-sm text-gray-700 leading-relaxed">
+            {content.split('\n').map((line, lineIndex) => {
+              if (line.trim().startsWith('•') || line.trim().startsWith('-')) {
+                return (
+                  <div key={lineIndex} className="flex items-start space-x-2 mb-2">
+                    <span className="text-blue-500 mt-1">•</span>
+                    <span>{line.trim().substring(1).trim()}</span>
+                  </div>
+                );
+              } else if (line.trim().match(/^\d+\./)) {
+                return (
+                  <div key={lineIndex} className="flex items-start space-x-2 mb-2">
+                    <span className="text-blue-500 font-medium">{line.trim().split('.')[0]}.</span>
+                    <span>{line.trim().split('.').slice(1).join('.').trim()}</span>
+                  </div>
+                );
+              } else if (line.trim()) {
+                return <p key={lineIndex} className="mb-2">{line.trim()}</p>;
+              }
+              return null;
+            })}
+          </div>
+        </div>
+      );
+    });
+  };
+
+  // Lab styling helper functions
+  const getLabCardStyle = (status) => {
+    switch (status) {
+      case 'high':
+        return 'bg-red-50 border-red-300';
+      case 'low':
+        return 'bg-blue-50 border-blue-300';
+      case 'normal':
+        return 'bg-green-50 border-green-300';
+      default:
+        return 'bg-gray-50 border-gray-300';
+    }
+  };
+
+  const getLabStatusColor = (status) => {
+    switch (status) {
+      case 'high':
+        return 'bg-red-500';
+      case 'low':
+        return 'bg-blue-500';
+      case 'normal':
+        return 'bg-green-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  const getLabStatusBadge = (status) => {
+    switch (status) {
+      case 'high':
+        return 'bg-red-100 text-red-800 border border-red-200';
+      case 'low':
+        return 'bg-blue-100 text-blue-800 border border-blue-200';
+      case 'normal':
+        return 'bg-green-100 text-green-800 border border-green-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border border-gray-200';
+    }
+  };
+
   // Fetch existing conditions on mount and when user opens the Conditions tab
   useEffect(() => {
     const load = async () => {
@@ -757,39 +859,86 @@ const HealthReportAnalysis = () => {
                 {analysisResults ? (
                   <div className="mb-8">
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">Report Analysis Results</h3>
-                    <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold text-gray-900">Health Report Analysis</h3>
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                          {analysisResults.confidence || 'Analysis Complete'}
-                        </span>
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-400 p-6 rounded-r-lg shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                            <FaFileMedical className="text-white text-lg" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold text-gray-900">Health Report Analysis</h3>
+                            <p className="text-sm text-blue-600">AI-powered insights and recommendations</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
+                            {analysisResults.confidence || 'Analysis Complete'}
+                          </span>
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        </div>
                       </div>
                       <div className="text-sm text-gray-700">
-                        <p className="mb-2"><strong>Summary:</strong> {analysisResults.message || 'Analysis completed'}</p>
+                        <div className="bg-white p-3 rounded-lg border border-blue-200 mb-4">
+                          <div className="flex items-center space-x-2">
+                            <FaInfoCircle className="text-blue-500 text-sm" />
+                            <span className="font-semibold text-gray-900">Summary:</span>
+                            <span>{analysisResults.message || 'Analysis completed'}</span>
+                          </div>
+                        </div>
                         {analysisResults.analysis ? (
-                          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                            <p className="font-medium mb-2">AI Analysis:</p>
-                            <div className="text-sm whitespace-pre-line">{analysisResults.analysis}</div>
+                          <div className="mt-4 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
+                            <div className="flex items-center space-x-3 mb-4">
+                              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                                <FaMagic className="text-white text-lg" />
+                              </div>
+                              <div>
+                                <h4 className="text-lg font-semibold text-gray-900">AI Analysis</h4>
+                                <p className="text-sm text-blue-600">Powered by advanced AI insights</p>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-4">
+                              {formatAnalysisText(analysisResults.analysis)}
+                            </div>
                           </div>
                         ) : (
-                          <p className="text-green-700">✅ Analysis completed successfully</p>
+                          <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                            <div className="flex items-center space-x-2">
+                              <FaCheckCircle className="text-green-600 text-lg" />
+                              <p className="text-green-700 font-medium">Analysis completed successfully</p>
+                            </div>
+                          </div>
                         )}
 
                         {/* Lab Highlights */}
                         {parsedLabs.length > 0 && (
-                          <div className="mt-5">
-                            <p className="font-semibold text-gray-900 mb-3">Highlighted Labs</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          <div className="mt-6">
+                            <div className="flex items-center space-x-3 mb-4">
+                              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                                <FaMicroscope className="text-white text-sm" />
+                              </div>
+                              <h3 className="text-lg font-semibold text-gray-900">Highlighted Labs</h3>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                               {parsedLabs.map((lab, idx) => (
-                                <div key={idx} className={`rounded-lg px-4 py-3 ${labBadges[lab.status]}`}>
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-semibold">{lab.name}</span>
-                                    <span className="text-xs capitalize">{lab.status}</span>
+                                <div key={idx} className={`rounded-xl p-4 border-2 shadow-sm transition-all duration-200 hover:shadow-md ${getLabCardStyle(lab.status)}`}>
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center space-x-2">
+                                      <div className={`w-3 h-3 rounded-full ${getLabStatusColor(lab.status)}`}></div>
+                                      <span className="font-semibold text-gray-900 text-sm">{lab.name}</span>
+                                    </div>
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getLabStatusBadge(lab.status)}`}>
+                                      {lab.status.toUpperCase()}
+                                    </span>
                                   </div>
-                                  <div className="mt-1 text-sm">
-                                    <span className="font-medium">{String(lab.value)} {lab.unit}</span>
+                                  <div className="space-y-2">
+                                    <div className="text-lg font-bold text-gray-900">
+                                      {String(lab.value)} {lab.unit}
+                                    </div>
                                     { (lab.range.min !== undefined || lab.range.max !== undefined) && (
-                                      <span className="ml-2 text-gray-700">(norm: {lab.range.min !== undefined ? lab.range.min : '–'}{(lab.range.min !== undefined || lab.range.max !== undefined) && '-'}{lab.range.max !== undefined ? lab.range.max : '–'})</span>
+                                      <div className="text-sm text-gray-600">
+                                        Normal: {lab.range.min !== undefined ? lab.range.min : '–'}{(lab.range.min !== undefined || lab.range.max !== undefined) && '-'}{lab.range.max !== undefined ? lab.range.max : '–'}
+                                      </div>
                                     )}
                                   </div>
                                 </div>
@@ -850,20 +999,37 @@ const HealthReportAnalysis = () => {
                 {analysisResults ? (
                   <div className="space-y-6">
                     {/* Analysis Summary */}
-                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Analysis Summary</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="bg-white rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold text-blue-600">{analysisResults.reportsCount || 0}</div>
-                          <div className="text-sm text-gray-600">Reports Analyzed</div>
+                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200 shadow-sm">
+                      <div className="flex items-center space-x-3 mb-6">
+                        <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                          <FaChartLine className="text-white text-lg" />
                         </div>
-                        <div className="bg-white rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold text-green-600">{analysisResults.conditionsCount || 0}</div>
-                          <div className="text-sm text-gray-600">Health Conditions</div>
+                        <div>
+                          <h3 className="text-xl font-semibold text-gray-900">Analysis Summary</h3>
+                          <p className="text-sm text-purple-600">Key metrics and insights overview</p>
                         </div>
-                        <div className="bg-white rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold text-yellow-600">{analysisResults.analysis ? 1 : 0}</div>
-                          <div className="text-sm text-gray-600">Analysis Complete</div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white rounded-xl p-6 text-center shadow-sm border border-blue-100 hover:shadow-md transition-shadow duration-200">
+                          <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mx-auto mb-3">
+                            <FaFileMedical className="text-white text-lg" />
+                          </div>
+                          <div className="text-3xl font-bold text-blue-600 mb-1">{analysisResults.reportsCount || 0}</div>
+                          <div className="text-sm text-gray-600 font-medium">Reports Analyzed</div>
+                        </div>
+                        <div className="bg-white rounded-xl p-6 text-center shadow-sm border border-green-100 hover:shadow-md transition-shadow duration-200">
+                          <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center mx-auto mb-3">
+                            <FaHeart className="text-white text-lg" />
+                          </div>
+                          <div className="text-3xl font-bold text-green-600 mb-1">{analysisResults.conditionsCount || 0}</div>
+                          <div className="text-sm text-gray-600 font-medium">Health Conditions</div>
+                        </div>
+                        <div className="bg-white rounded-xl p-6 text-center shadow-sm border border-yellow-100 hover:shadow-md transition-shadow duration-200">
+                          <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-600 rounded-lg flex items-center justify-center mx-auto mb-3">
+                            <FaCheckCircle className="text-white text-lg" />
+                          </div>
+                          <div className="text-3xl font-bold text-yellow-600 mb-1">{analysisResults.analysis ? 1 : 0}</div>
+                          <div className="text-sm text-gray-600 font-medium">Analysis Complete</div>
                         </div>
                       </div>
                     </div>
@@ -873,10 +1039,18 @@ const HealthReportAnalysis = () => {
 
                     {/* Food Recommendations from Health Conditions */}
                     {foodRecommendations && (
-                      <div className="bg-white rounded-xl border border-gray-200 p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Food Recommendations</h3>
-                        <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                          <div className="text-sm whitespace-pre-line text-gray-700">{foodRecommendations}</div>
+                      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                        <div className="flex items-center space-x-3 mb-6">
+                          <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                            <FaAppleAlt className="text-white text-lg" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-semibold text-gray-900">Food Recommendations</h3>
+                            <p className="text-sm text-green-600">AI-powered dietary guidance based on your health profile</p>
+                          </div>
+                        </div>
+                        <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                          <div className="text-sm whitespace-pre-line text-gray-700 leading-relaxed">{foodRecommendations}</div>
                         </div>
                       </div>
                     )}

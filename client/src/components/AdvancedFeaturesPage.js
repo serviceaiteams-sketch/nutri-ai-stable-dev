@@ -3,14 +3,15 @@ import { motion } from 'framer-motion';
 import {
   FaPills, FaShieldAlt, FaUtensils,
   FaEye, FaBrain, FaArrowLeft, FaCheckCircle, FaExclamationTriangle,
-  FaChartLine, FaDownload, FaShare, FaPlay
+  FaChartLine, FaDownload, FaShare, FaPlay, FaTint
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import MicronutrientTracking from './MicronutrientTracking';
 import AIAllergenDetection from './AIAllergenDetection';
-import DynamicMealPlanning from './DynamicMealPlanning';
+import AIMealPlanning from './AIMealPlanning';
 import MoodNutritionAnalysis from './MoodNutritionAnalysis';
 import HealthApprovedIndia from './HealthApprovedIndia';
+import Hydration from './Hydration';
 
 const AdvancedFeaturesPage = () => {
   const { user } = useAuth();
@@ -58,6 +59,13 @@ const AdvancedFeaturesPage = () => {
       icon: FaCheckCircle,
       color: 'from-emerald-500 to-teal-600',
       description: 'Scan barcodes, analyze ingredients, and get India-focused health approvals'
+    },
+    {
+      id: 'water-intake',
+      name: 'Water Intake Tracking',
+      icon: FaTint,
+      color: 'from-cyan-500 to-blue-600',
+      description: 'Smart hydration tracking with AI-powered reminders and personalized water goals'
     }
   ];
 
@@ -73,7 +81,7 @@ const AdvancedFeaturesPage = () => {
         return <AIAllergenDetection />;
       case 'meal-planning':
         return (
-          <DynamicMealPlanning />
+          <AIMealPlanning />
         );
       case 'portion-ai':
         return (
@@ -91,6 +99,8 @@ const AdvancedFeaturesPage = () => {
         );
       case 'health-approved':
         return <HealthApprovedIndia />;
+      case 'water-intake':
+        return <Hydration />;
       default:
         return (
           <div className="space-y-6">

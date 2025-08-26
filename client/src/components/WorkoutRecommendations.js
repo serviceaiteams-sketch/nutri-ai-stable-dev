@@ -71,6 +71,12 @@ const WorkoutRecommendations = () => {
     exercises: [{ name: '', sets: 3, reps: 10, weight: 0, duration: 0 }]
   });
 
+  const [stepsData, setStepsData] = useState({
+    currentSteps: 0,
+    targetSteps: 10000,
+    date: new Date().toISOString().split('T')[0]
+  });
+
   useEffect(() => {
     (async () => {
       await fetchWorkouts();
@@ -523,6 +529,83 @@ const WorkoutRecommendations = () => {
               {filteredWorkouts.filter(w => w.intensity === 'high').length}
             </div>
             <div className="text-sm text-gray-600">High Intensity</div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Steps Tracking */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="bg-white rounded-2xl shadow-xl p-6"
+      >
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Daily Steps Tracking</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Steps Counter */}
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Today's Steps</h3>
+              <span className="text-2xl font-bold text-green-600">{stepsData.currentSteps.toLocaleString()}</span>
+            </div>
+            
+            {/* Progress Bar */}
+            <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
+              <div 
+                className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full transition-all duration-500" 
+                style={{ width: `${Math.min((stepsData.currentSteps / stepsData.targetSteps) * 100, 100)}%` }}
+              ></div>
+            </div>
+            
+            {/* Steps Controls */}
+            <div className="flex items-center justify-center space-x-4">
+              <button 
+                onClick={() => setStepsData(prev => ({ ...prev, currentSteps: Math.max(0, prev.currentSteps - 500) }))}
+                className="w-12 h-12 bg-white border-2 border-green-300 rounded-full flex items-center justify-center text-green-600 hover:bg-green-50 transition-colors duration-200"
+              >
+                <span className="text-xl font-bold">-</span>
+              </button>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-600">{stepsData.currentSteps.toLocaleString()}</div>
+                <div className="text-sm text-gray-600">/ {stepsData.targetSteps.toLocaleString()}</div>
+              </div>
+              <button 
+                onClick={() => setStepsData(prev => ({ ...prev, currentSteps: prev.currentSteps + 500 }))}
+                className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center text-white hover:from-green-600 hover:to-emerald-600 transition-all duration-200"
+              >
+                <span className="text-xl font-bold">+</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Steps Insights */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Steps Insights</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Daily Goal</span>
+                <span className="font-semibold text-blue-600">{stepsData.targetSteps.toLocaleString()} steps</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Progress</span>
+                <span className="font-semibold text-blue-600">{Math.round((stepsData.currentSteps / stepsData.targetSteps) * 100)}%</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Remaining</span>
+                <span className="font-semibold text-blue-600">{Math.max(0, stepsData.targetSteps - stepsData.currentSteps).toLocaleString()} steps</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Calories Burned</span>
+                <span className="font-semibold text-blue-600">{Math.round(stepsData.currentSteps * 0.04)} cal</span>
+              </div>
+            </div>
+            
+            {/* AI Motivation */}
+            <div className="mt-4 p-3 bg-white rounded-lg border border-blue-100">
+              <p className="text-sm text-gray-600">
+                🚶‍♂️ <span className="font-medium">Keep going!</span> You're {stepsData.currentSteps < stepsData.targetSteps / 2 ? 'getting started' : stepsData.currentSteps < stepsData.targetSteps ? 'more than halfway there' : 'almost there'} to your daily goal.
+              </p>
+            </div>
           </div>
         </div>
       </motion.div>

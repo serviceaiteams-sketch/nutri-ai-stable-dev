@@ -27,6 +27,7 @@ import AdvancedAnalytics from './components/AdvancedAnalytics';
 import AIMealPlanning from './components/AIMealPlanning';
 import SmartNotifications from './components/SmartNotifications';
 import Gamification from './components/Gamification';
+import MedicineReminders from './components/MedicineReminders';
 
 // Context
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -75,6 +76,8 @@ function AppContent() {
           <Route path="/food-recognition" element={user ? <FoodRecognition /> : <Navigate to="/login" />} />
           <Route path="/meal-tracking" element={user ? <MealTracking /> : <Navigate to="/login" />} />
           <Route path="/workouts" element={user ? <WorkoutRecommendations /> : <Navigate to="/login" />} />
+          <Route path="/medicine-reminders" element={user ? <MedicineReminders /> : <Navigate to="/login" />} />
+
           <Route path="/health-warnings" element={user ? <HealthWarnings /> : <Navigate to="/login" />} />
           <Route path="/health-analysis" element={user ? <HealthReportAnalysis /> : <Navigate to="/login" />} />
           <Route path="/sleep-tracking" element={user ? <SleepTracking /> : <Navigate to="/login" />} />
@@ -83,7 +86,7 @@ function AppContent() {
           <Route path="/settings" element={user ? <Settings /> : <Navigate to="/login" />} />
           <Route path="/advanced-features" element={user ? <AdvancedFeaturesPage /> : <Navigate to="/login" />} />
           <Route path="/analytics" element={user ? <AdvancedAnalytics /> : <Navigate to="/login" />} />
-          <Route path="/meal-planning" element={user ? <AIMealPlanning /> : <Navigate to="/login" />} />
+
           <Route path="/notifications" element={user ? <SmartNotifications /> : <Navigate to="/login" />} />
           <Route path="/gamification" element={user ? <Gamification /> : <Navigate to="/login" />} />
           <Route path="/admin/feedback" element={user ? <AdminFeedback /> : <Navigate to="/login" />} />

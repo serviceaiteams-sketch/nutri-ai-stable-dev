@@ -1,527 +1,1528 @@
-import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import axios from 'axios';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  FaUser,
-  FaCog, 
-  FaCamera,
-  FaEdit,
-  FaSave,
-  FaSpinner,
-  FaAt,
-  FaEnvelope,
-  FaPhone,
-  FaBirthdayCake,
-  FaVenusMars,
-  FaRuler,
-  FaWeight,
-  FaRunning,
-  FaLeaf,
-  FaAllergies,
-  FaPills,
-  FaShieldAlt,
-  FaGoogle,
-  FaFacebook,
-  FaLanguage,
-  FaGlobe,
-  FaTrash,
-  FaBell
+  FaUser, FaBell, FaLock, FaCreditCard, FaCog, FaLink, FaShieldAlt, 
+  FaDesktop, FaQuestionCircle, FaEdit, FaTrash, FaDownload, FaEye, 
+  FaEyeSlash, FaPlus, FaTimes, FaCheck, FaExclamationTriangle,
+  FaApple, FaGoogle, FaHeart, FaCalendarAlt, FaLanguage, FaPalette,
+  FaRuler, FaChartLine, FaRobot, FaBrain, FaHistory, FaTicketAlt
 } from 'react-icons/fa';
+import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 const Settings = () => {
-  // Tabs: profile | settings
-  const [activeTab, setActiveTab] = useState('settings');
+  const { user, logout } = useAuth();
+  const [activeTab, setActiveTab] = useState('profile');
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Profile data
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-  const [formData, setFormData] = useState({
-    name: '',
-    age: '',
-    gender: '',
-    height: '',
-    weight: '',
-    activity_level: '',
-    health_goal: '',
-    dietary_preferences: '',
-    allergies: '',
-    medical_conditions: '',
-    username: '',
-    email: '',
-    phone: '',
-    dob: '',
-    bio: '',
-    profile_visibility: 'friends'
+  // User Profile State
+  const [profile, setProfile] = useState({
+    name: user?.name || 'Test User',
+    age: 34,
+    gender: 'Female',
+    email: user?.email || 'test@example.com',
+    phone: '+1 (555) 123-4567',
+    height: 165,
+    weight: 68,
+    bmi: 24.8,
+    avatar: null,
+    chronicConditions: ['Hypertension'],
+    dietaryRestrictions: ['Vegetarian'],
+    addictionType: 'Alcohol',
+    recoveryMilestones: 75,
+    relapseHistory: 1
   });
 
-  // Avatar
-  const [avatarPreview, setAvatarPreview] = useState('');
-  const [avatarFile, setAvatarFile] = useState(null);
+  // Privacy & Data State
+  const [privacy, setPrivacy] = useState({
+    dataSharing: {
+      clinicians: true,
+      researchers: false,
+      family: true
+    },
+    healthDataVisibility: {
+      labs: true,
+      reports: true,
+      medications: false
+    },
+    compliance: {
+      gdpr: true,
+      hipaa: true
+    }
+  });
 
-  // Account settings
-  const [pwd, setPwd] = useState({ current: '', next: '', confirm: '' });
-  const [twoFAEnabled, setTwoFAEnabled] = useState(false);
-  const [notify, setNotify] = useState({ email: true, sms: false, push: true });
-  const [linked, setLinked] = useState({ google: false, facebook: false });
-  const [language, setLanguage] = useState('en');
-  const [timeZone, setTimeZone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
-  const [sessionTimeout, setSessionTimeout] = useState(30);
+  // Subscription State
+  const [subscription, setSubscription] = useState({
+    plan: 'Gold',
+    status: 'Active',
+    nextBilling: '2024-02-15',
+    amount: 14.99,
+    paymentMethod: 'Visa ending in 1234',
+    autoRenew: true
+  });
 
-  useEffect(() => {
-    const load = async () => {
-      try {
+  // Personalization State
+  const [personalization, setPersonalization] = useState({
+    aiFeedback: 'balanced',
+    adaptiveLearning: true,
+    aiModelVersion: 'gpt-4o-mini',
+    predictionConfidence: 'medium'
+  });
+
+  // Integrations State
+  const [integrations, setIntegrations] = useState({
+    wearables: {
+      fitbit: { connected: false, lastSync: null },
+      appleHealth: { connected: false, lastSync: null },
+      googleFit: { connected: false, lastSync: null }
+    },
+    medicalPortals: {
+      labCorp: { connected: false, lastSync: null },
+      quest: { connected: false, lastSync: null }
+    },
+    calendar: { connected: false, lastSync: null }
+  });
+
+  // Security State
+  const [security, setSecurity] = useState({
+    twoFactorEnabled: true,
+    loginMethods: ['email', 'google'],
+    biometricEnabled: false,
+    sessionTimeout: 30
+  });
+
+  // System Preferences State
+  const [system, setSystem] = useState({
+    theme: 'light',
+    language: 'en',
+    units: 'metric',
+    defaultView: 'dashboard'
+  });
+
+  const tabs = [
+    { id: 'profile', name: 'Profile & Account', icon: FaUser },
+    { id: 'privacy', name: 'Privacy & Data', icon: FaLock },
+    { id: 'subscription', name: 'Subscription', icon: FaCreditCard },
+    { id: 'personalization', name: 'Personalization', icon: FaCog },
+    { id: 'integrations', name: 'Integrations', icon: FaLink },
+    { id: 'security', name: 'Security', icon: FaShieldAlt },
+    { id: 'system', name: 'System', icon: FaDesktop },
+    { id: 'help', name: 'Help & Support', icon: FaQuestionCircle }
+  ];
+
+  const handleProfileUpdate = async (updatedProfile) => {
         setLoading(true);
-        const profileResponse = await axios.get('/api/users/profile');
-        setUser(profileResponse.data.user);
-        setFormData(prev => ({
-          ...prev,
-          name: profileResponse.data.user.name || '',
-          age: profileResponse.data.user.age || '',
-          gender: profileResponse.data.user.gender || '',
-          height: profileResponse.data.user.height || '',
-          weight: profileResponse.data.user.weight || '',
-          activity_level: profileResponse.data.user.activity_level || '',
-          health_goal: profileResponse.data.user.health_goal || '',
-          dietary_preferences: profileResponse.data.user.dietary_preferences || '',
-          allergies: profileResponse.data.user.allergies || '',
-          medical_conditions: profileResponse.data.user.medical_conditions || '',
-          email: profileResponse.data.user.email || prev.email,
-          phone: profileResponse.data.user.phone || prev.phone,
-          username: profileResponse.data.user.username || prev.username,
-          dob: profileResponse.data.user.dob || prev.dob,
-          bio: profileResponse.data.user.bio || prev.bio,
-          profile_visibility: profileResponse.data.user.profile_visibility || prev.profile_visibility
-        }));
-        if (typeof profileResponse.data.user.twofa_enabled !== 'undefined') {
-          setTwoFAEnabled(!!profileResponse.data.user.twofa_enabled);
-        }
-      } catch (e) {
-        console.error(e);
-        toast.error('Failed to load profile');
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setProfile(updatedProfile);
+      setIsEditing(false);
+      toast.success('Profile updated successfully!');
+    } catch (error) {
+      toast.error('Failed to update profile');
       } finally {
         setLoading(false);
       }
     };
-    load();
-  }, []);
 
-  const allowedProfileKeys = [
-    'name','age','gender','height','weight','activity_level','health_goal','dietary_preferences','allergies','medical_conditions'
-  ];
-
-  const handleProfileUpdate = async (e) => {
-    e.preventDefault();
+  const handlePrivacyUpdate = async (updatedPrivacy) => {
+    setLoading(true);
     try {
-      const payload = {};
-      allowedProfileKeys.forEach(k => { if (formData[k] !== undefined) payload[k] = formData[k]; });
-      const response = await axios.put('/api/users/profile', payload);
-      setUser(response.data.user);
-      setEditing(false);
-      toast.success('Profile updated');
-    } catch (err) {
-      console.error(err);
-      toast.error(err?.response?.data?.error || 'Failed to update profile');
+      await new Promise(resolve => setTimeout(resolve, 800));
+      setPrivacy(updatedPrivacy);
+      toast.success('Privacy settings updated!');
+    } catch (error) {
+      toast.error('Failed to update privacy settings');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const onAvatarChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type)) {
-      toast.error('Please upload a valid image');
-      return;
-    }
-    setAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
-  };
-
-  const uploadAvatar = async () => {
-    if (!avatarFile) { toast.error('Choose an image first'); return; }
+  const handleSubscriptionChange = async (newPlan) => {
+    setLoading(true);
     try {
-      const fd = new FormData();
-      fd.append('avatar', avatarFile);
-      await axios.post('/api/users/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      toast.success('Profile photo updated');
-    } catch (err) {
-      toast.error(err?.response?.data?.error || 'Could not upload photo');
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      setSubscription(prev => ({ ...prev, plan: newPlan }));
+      toast.success(`Successfully upgraded to ${newPlan} plan!`);
+    } catch (error) {
+      toast.error('Failed to change subscription');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const requestEmailVerification = async () => {
-    if (!/^\S+@\S+\.\S+$/.test(formData.email || '')) { toast.error('Enter a valid email'); return; }
+  const handleIntegrationToggle = async (type, provider) => {
+    setLoading(true);
     try {
-      await axios.post('/api/auth/request-email-change', { email: formData.email });
-      toast.success('Verification email sent');
-    } catch {
-      toast.error('Could not send email verification');
-    }
-  };
-
-  const requestPhoneOTP = async () => {
-    if (!/^[\d\s\-+()]{7,}$/.test(formData.phone || '')) { toast.error('Enter a valid phone'); return; }
-    try {
-      await axios.post('/api/users/request-phone-otp', { phone: formData.phone });
-      toast.success('OTP sent to phone');
-    } catch {
-      toast.error('Could not send phone OTP');
-    }
-  };
-
-  const passwordScore = (p) => {
-    let score = 0; if (!p) return 0;
-    if (p.length >= 8) score++;
-    if (/[A-Z]/.test(p)) score++;
-    if (/[a-z]/.test(p)) score++;
-    if (/\d/.test(p)) score++;
-    if (/[^A-Za-z0-9]/.test(p)) score++;
-    return Math.min(score, 5);
-  };
-
-  const changePassword = async (e) => {
-    e.preventDefault();
-    if (pwd.next !== pwd.confirm) { toast.error('Passwords do not match'); return; }
-    if (passwordScore(pwd.next) < 3) { toast.error('Password too weak'); return; }
-    try {
-      await axios.post('/api/auth/change-password', { currentPassword: pwd.current, newPassword: pwd.next });
-      toast.success('Password updated');
-      setPwd({ current: '', next: '', confirm: '' });
-    } catch (err) { toast.error(err?.response?.data?.error || 'Failed to change password'); }
-  };
-
-  const toggle2FA = async () => {
-    try {
-      if (!twoFAEnabled) {
-        // Step 1: request secret
-        const { data } = await axios.post('/api/auth/2fa/enable');
-        if (data && data.secret) {
-          const code = window.prompt(`Scan in your authenticator app. Secret: ${data.secret}\nOr use otpauth URL in apps like Google Authenticator.\nEnter the 6-digit code to confirm:`);
-          if (!code) { toast.error('2FA setup canceled'); return; }
-          await axios.post('/api/auth/2fa/enable', { token: String(code).trim() });
-          toast.success('2FA enabled');
-          setTwoFAEnabled(true);
-        } else {
-          toast.error('Failed to initiate 2FA');
+      await new Promise(resolve => setTimeout(resolve, 600));
+      setIntegrations(prev => ({
+        ...prev,
+        [type]: {
+          ...prev[type],
+          [provider]: {
+            ...prev[type][provider],
+            connected: !prev[type][provider].connected,
+            lastSync: prev[type][provider].connected ? null : new Date().toISOString()
+          }
         }
-      } else {
-        await axios.post('/api/auth/2fa/disable');
-        toast.success('2FA disabled');
-        setTwoFAEnabled(false);
-      }
-    } catch (e) { toast.error(e?.response?.data?.error || 'Could not update 2FA'); }
+      }));
+      toast.success(`${provider} ${integrations[type][provider].connected ? 'disconnected' : 'connected'} successfully!`);
+    } catch (error) {
+      toast.error('Failed to toggle integration');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const saveNotifications = async () => {
-    try { await axios.post('/api/users/notifications', notify); toast.success('Notification preferences saved'); }
-    catch { toast.success('Saved locally'); }
-    localStorage.setItem('notifyPrefs', JSON.stringify(notify));
-  };
-
-  const toggleLink = async (provider) => {
+  const handleSecurityToggle = async (setting, value) => {
+    setLoading(true);
     try {
-      if (!linked[provider]) { await axios.post(`/api/auth/link/${provider}`); setLinked(prev=>({...prev,[provider]:true})); toast.success(`Linked ${provider}`); }
-      else { await axios.post(`/api/auth/unlink/${provider}`); setLinked(prev=>({...prev,[provider]:false})); toast.success(`Unlinked ${provider}`); }
-    } catch { toast.error('Operation failed'); }
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setSecurity(prev => ({ ...prev, [setting]: value }));
+      toast.success(`${setting} ${value ? 'enabled' : 'disabled'} successfully!`);
+    } catch (error) {
+      toast.error('Failed to update security settings');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const saveLocale = () => { localStorage.setItem('language', language); localStorage.setItem('timeZone', timeZone); toast.success('Language and time zone saved'); };
-  const saveSessionTimeout = () => { localStorage.setItem('sessionTimeoutMinutes', String(sessionTimeout)); toast.success('Session timeout preference saved'); };
-
-  const handleDeleteAccount = async () => {
-    try { await axios.delete('/api/users/account'); toast.success('Account deleted'); window.location.href = '/login'; }
-    catch { toast.error('Failed to delete account'); }
+  const handleSystemUpdate = async (setting, value) => {
+    setLoading(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setSystem(prev => ({ ...prev, [setting]: value }));
+      toast.success(`${setting} updated to ${value}!`);
+    } catch (error) {
+      toast.error('Failed to update system settings');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-64">
-        <FaSpinner className="animate-spin h-8 w-8 text-blue-500" />
-              </div>
-    );
-  }
+  const exportData = async () => {
+    setLoading(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const data = { profile, privacy, personalization, integrations };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'nutriai-data-export.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Data exported successfully!');
+    } catch (error) {
+      toast.error('Failed to export data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteAccount = async () => {
+    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      setLoading(true);
+      try {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        logout();
+        toast.success('Account deleted successfully');
+      } catch (error) {
+        toast.error('Failed to delete account');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="rounded-2xl p-[2px] bg-gradient-to-r from-emerald-400 via-green-500 to-teal-500">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-4">
-              <FaCog className="h-8 w-8 text-green-600" />
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-                <p className="text-gray-600">Manage your profile and account</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg" role="tablist">
-            <button onClick={()=>setActiveTab('profile')} className={`flex-1 py-2 px-4 rounded-md transition-colors ${activeTab==='profile'?'bg-white text-green-600 shadow-sm':'text-gray-600 hover:text-gray-900'}`} role="tab" aria-selected={activeTab==='profile'}>
-              <FaUser className="h-4 w-4 inline mr-2" /> Profile
-            </button>
-            <button onClick={()=>setActiveTab('settings')} className={`flex-1 py-2 px-4 rounded-md transition-colors ${activeTab==='settings'?'bg-white text-green-600 shadow-sm':'text-gray-600 hover:text-gray-900'}`} role="tab" aria-selected={activeTab==='settings'}>
-              <FaCog className="h-4 w-4 inline mr-2" /> Settings
-            </button>
-          </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+          <p className="text-gray-600 mt-2">Manage your account, privacy, and preferences</p>
         </motion.div>
-      </div>
 
-      {/* Profile tab */}
-      {activeTab==='profile' && (
-        <div className="rounded-2xl p-[2px] bg-gradient-to-r from-emerald-400 via-green-500 to-teal-500">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white rounded-2xl shadow-xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Personal Information</h2>
-              {!editing && (
-                <button onClick={()=>setEditing(true)} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-                  <FaEdit className="h-4 w-4 inline mr-2" /> Edit Profile
-                </button>
-              )}
-            </div>
-
-            {editing ? (
-              <form onSubmit={handleProfileUpdate} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Avatar */}
-                  <div className="md:col-span-2 flex items-center gap-4">
-                    <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-100 border">
-                      {avatarPreview ? (<img src={avatarPreview} alt="Profile preview" className="w-full h-full object-cover" />) : (<div className="w-full h-full grid place-items-center text-gray-400">IMG</div>)}
-                    </div>
-                    <div>
-                      <label className="inline-flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer bg-white hover:bg-gray-50">
-                        <FaCamera /> <span>Upload Photo</span>
-                        <input type="file" accept="image/*" className="hidden" onChange={onAvatarChange} aria-label="Upload profile picture" />
-                      </label>
-                      {avatarFile && (
-                        <button type="button" onClick={uploadAvatar} className="ml-3 px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Save Photo</button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2"><FaUser className="h-4 w-4 inline mr-2" /> Full Name</label>
-                    <input type="text" value={formData.name} onChange={e=>setFormData({...formData,name:e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your full name" aria-label="Full Name" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2"><FaAt className="h-4 w-4 inline mr-2" /> Username</label>
-                    <input type="text" value={formData.username} onChange={e=>setFormData({...formData,username:e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Choose a username" aria-label="Username" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2"><FaEnvelope className="h-4 w-4 inline mr-2" /> Email Address</label>
-                    <div className="flex gap-2">
-                      <input type="email" value={formData.email} onChange={e=>setFormData({...formData,email:e.target.value})} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="name@example.com" aria-label="Email" />
-                      <button type="button" onClick={requestEmailVerification} className="px-3 py-2 border rounded-md text-blue-600 hover:bg-blue-50">Verify</button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2"><FaPhone className="h-4 w-4 inline mr-2" /> Phone Number</label>
-                    <div className="flex gap-2">
-                      <input type="tel" value={formData.phone} onChange={e=>setFormData({...formData,phone:e.target.value})} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., +1 555 555 5555" aria-label="Phone Number" />
-                      <button type="button" onClick={requestPhoneOTP} className="px-3 py-2 border rounded-md text-blue-600 hover:bg-blue-50">Verify</button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2"><FaBirthdayCake className="h-4 w-4 inline mr-2" /> Date of Birth</label>
-                    <input type="date" value={formData.dob} onChange={e=>setFormData({...formData,dob:e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Date of Birth" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2"><FaVenusMars className="h-4 w-4 inline mr-2" /> Gender</label>
-                    <select value={formData.gender} onChange={e=>setFormData({...formData,gender:e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Gender">
-                      <option value="">Select gender</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2"><FaRuler className="h-4 w-4 inline mr-2" /> Height (cm)</label>
-                    <input type="number" value={formData.height} onChange={e=>setFormData({...formData,height:e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter height in cm" min="100" max="250" aria-label="Height" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2"><FaWeight className="h-4 w-4 inline mr-2" /> Weight (kg)</label>
-                    <input type="number" value={formData.weight} onChange={e=>setFormData({...formData,weight:e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter weight in kg" min="30" max="300" aria-label="Weight" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2"><FaRunning className="h-4 w-4 inline mr-2" /> Activity Level</label>
-                    <select value={formData.activity_level} onChange={e=>setFormData({...formData,activity_level:e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Activity Level">
-                      <option value="">Select activity level</option>
-                      <option value="sedentary">Sedentary (little or no exercise)</option>
-                      <option value="moderate">Moderate (1-3 days/week)</option>
-                      <option value="active">Active (3-5 days/week)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2"><FaLeaf className="h-4 w-4 inline mr-2" /> Dietary Preferences</label>
-                    <input type="text" value={formData.dietary_preferences} onChange={e=>setFormData({...formData,dietary_preferences:e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., vegetarian, vegan, gluten-free" aria-label="Dietary Preferences" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2"><FaAllergies className="h-4 w-4 inline mr-2" /> Allergies</label>
-                    <input type="text" value={formData.allergies} onChange={e=>setFormData({...formData,allergies:e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., nuts, dairy, shellfish" aria-label="Allergies" />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2"><FaPills className="h-4 w-4 inline mr-2" /> Medical Conditions</label>
-                    <input type="text" value={formData.medical_conditions} onChange={e=>setFormData({...formData,medical_conditions:e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., diabetes, hypertension, heart disease" aria-label="Medical Conditions" />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Brief Bio</label>
-                    <textarea value={formData.bio} onChange={e=>setFormData({...formData,bio:e.target.value.slice(0,200)})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" rows={3} maxLength={200} aria-label="Bio" />
-                    <div className="text-xs text-gray-500 mt-1">{(formData.bio||'').length}/200</div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Profile Visibility</label>
-                    <select value={formData.profile_visibility} onChange={e=>setFormData({...formData,profile_visibility:e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Profile Visibility">
-                      <option value="public">Public</option>
-                      <option value="friends">Friends only</option>
-                      <option value="private">Private</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-4">
-                  <button type="button" onClick={()=>setEditing(false)} className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
-                  <button type="submit" className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"><FaSave className="h-4 w-4 inline mr-2" /> Save Changes</button>
-                </div>
-              </form>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Name</label><p className="text-gray-900">{user?.name || 'Not provided'}</p></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Age</label><p className="text-gray-900">{user?.age ? `${user.age} years` : 'Not provided'}</p></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Gender</label><p className="text-gray-900 capitalize">{user?.gender || 'Not provided'}</p></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Height</label><p className="text-gray-900">{user?.height ? `${user.height} cm` : 'Not provided'}</p></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Weight</label><p className="text-gray-900">{user?.weight ? `${user.weight} kg` : 'Not provided'}</p></div>
-                </div>
-                <div className="space-y-4">
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Activity Level</label><p className="text-gray-900">{user?.activity_level || 'Not provided'}</p></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Health Goal</label><p className="text-gray-900">{user?.health_goal?.replace('_',' ') || 'Not provided'}</p></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Dietary Preferences</label><p className="text-gray-900">{user?.dietary_preferences || 'None specified'}</p></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Allergies</label><p className="text-gray-900">{user?.allergies || 'None specified'}</p></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Medical Conditions</label><p className="text-gray-900">{user?.medical_conditions || 'None specified'}</p></div>
-                </div>
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Sidebar Navigation */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="lg:w-64 flex-shrink-0"
+          >
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <div className="space-y-2">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-all duration-200 ${
+                      activeTab === tab.id
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                  >
+                    <tab.icon className="h-5 w-5" />
+                    <span className="font-medium">{tab.name}</span>
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
+          </motion.div>
+
+          {/* Main Content */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex-1"
+          >
+            <AnimatePresence mode="wait">
+              {activeTab === 'profile' && (
+                <ProfileTab
+                  key="profile"
+                  profile={profile}
+                  onUpdate={handleProfileUpdate}
+                  loading={loading}
+                />
+              )}
+              {activeTab === 'privacy' && (
+                <PrivacyTab
+                  key="privacy"
+                  privacy={privacy}
+                  onUpdate={handlePrivacyUpdate}
+                  onExport={exportData}
+                  onDelete={deleteAccount}
+                  loading={loading}
+                />
+              )}
+              {activeTab === 'subscription' && (
+                <SubscriptionTab
+                  key="subscription"
+                  subscription={subscription}
+                  onChange={handleSubscriptionChange}
+                  loading={loading}
+                />
+              )}
+              {activeTab === 'personalization' && (
+                <PersonalizationTab
+                  key="personalization"
+                  personalization={personalization}
+                  onUpdate={handleSystemUpdate}
+                  loading={loading}
+                />
+              )}
+              {activeTab === 'integrations' && (
+                <IntegrationsTab
+                  key="integrations"
+                  integrations={integrations}
+                  onToggle={handleIntegrationToggle}
+                  loading={loading}
+                />
+              )}
+              {activeTab === 'security' && (
+                <SecurityTab
+                  key="security"
+                  security={security}
+                  onToggle={handleSecurityToggle}
+                  loading={loading}
+                />
+              )}
+              {activeTab === 'system' && (
+                <SystemTab
+                  key="system"
+                  system={system}
+                  onUpdate={handleSystemUpdate}
+                  loading={loading}
+                />
+              )}
+              {activeTab === 'help' && (
+                <HelpTab
+                  key="help"
+                  loading={loading}
+                />
+              )}
+            </AnimatePresence>
           </motion.div>
         </div>
-      )}
+      </div>
+    </div>
+  );
+};
 
-      {/* Settings tab */}
-      {activeTab==='settings' && (
-        <div className="rounded-2xl p-[2px] bg-gradient-to-r from-emerald-400 via-green-500 to-teal-500">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white rounded-2xl shadow-xl p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Account Settings</h2>
-            <div className="space-y-6">
-              {/* Password */}
-              <div className="border border-gray-200 rounded-lg p-4" aria-labelledby="pwd-title">
-                <div className="flex items-center gap-2 mb-3"><FaShieldAlt className="text-blue-500" /><h3 id="pwd-title" className="font-semibold text-gray-900">Password</h3></div>
-                <form onSubmit={changePassword} className="grid md:grid-cols-3 gap-3">
-                  <input type="password" aria-label="Current password" placeholder="Current password" className="px-3 py-2 border rounded-md" value={pwd.current} onChange={e=>setPwd({...pwd,current:e.target.value})} required />
-                  <div>
-                    <input type="password" aria-label="New password" placeholder="New password" className="w-full px-3 py-2 border rounded-md" value={pwd.next} onChange={e=>setPwd({...pwd,next:e.target.value})} required />
-                    <div className="mt-2 h-1 w-full bg-gray-200 rounded"><div className={`h-1 rounded ${['w-1/6 bg-red-500','w-2/6 bg-orange-500','w-3/6 bg-yellow-500','w-4/6 bg-green-500','w-5/6 bg-emerald-600'][passwordScore(pwd.next)-1] || ''}`}></div></div>
+// Profile Tab Component
+const ProfileTab = ({ profile, onUpdate, loading }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState(profile);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+
+  useEffect(() => {
+    setFormData(profile);
+  }, [profile]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await onUpdate(formData);
+  };
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAvatarPreview(URL.createObjectURL(file));
+      setFormData(prev => ({ ...prev, avatar: file }));
+    }
+  };
+
+  const calculateBMI = (height, weight) => {
+    if (height > 0 && weight > 0) {
+      return (weight / Math.pow(height / 100, 2)).toFixed(1);
+    }
+    return null;
+  };
+
+  const handleHeightWeightChange = (field, value) => {
+    const newData = { ...formData, [field]: value };
+    if (field === 'height' || field === 'weight') {
+      newData.bmi = calculateBMI(newData.height, newData.weight);
+    }
+    setFormData(newData);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+    >
+          <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Profile & Account</h2>
+        {!isEditing && (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2"
+          >
+            <FaEdit className="h-4 w-4" />
+            <span>Edit Profile</span>
+          </button>
+        )}
+      </div>
+
+      {isEditing ? (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Avatar Section */}
+          <div className="flex items-center space-x-6">
+            <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 border-4 border-gray-200">
+              {avatarPreview ? (
+                <img src={avatarPreview} alt="Profile preview" className="w-full h-full object-cover" />
+              ) : profile.avatar ? (
+                <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-2xl font-bold">
+                  {profile.name?.charAt(0) || 'U'}
+                </div>
+              )}
+            </div>
+              <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Profile Picture</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              </div>
+            </div>
+
+          {/* Personal Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+          </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
+              <input
+                type="number"
+                value={formData.age}
+                onChange={(e) => setFormData({ ...formData, age: parseInt(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                min="1"
+                max="120"
+                required
+              />
+          </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+              <select
+                value={formData.gender}
+                onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="">Select gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+                <option value="Prefer not to say">Prefer not to say</option>
+              </select>
+      </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+                    </div>
+          </div>
+
+          {/* Health Information */}
+          <div className="border-t border-gray-200 pt-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Health Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Height (cm)</label>
+                <input
+                  type="number"
+                  value={formData.height}
+                  onChange={(e) => handleHeightWeightChange('height', parseInt(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="100"
+                  max="250"
+                />
+                    </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Weight (kg)</label>
+                <input
+                  type="number"
+                  value={formData.weight}
+                  onChange={(e) => handleHeightWeightChange('weight', parseInt(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="30"
+                  max="300"
+                />
                   </div>
-                  <input type="password" aria-label="Confirm password" placeholder="Confirm new password" className="px-3 py-2 border rounded-md" value={pwd.confirm} onChange={e=>setPwd({...pwd,confirm:e.target.value})} required />
-                  <div className="md:col-span-3 flex justify-end"><button type="submit" className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Update Password</button></div>
-                </form>
+
+                  <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">BMI</label>
+                <input
+                  type="text"
+                  value={formData.bmi || 'Calculated automatically'}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                  disabled
+                />
+              </div>
+            </div>
+                  </div>
+
+          {/* Recovery Information */}
+          <div className="border-t border-gray-200 pt-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recovery Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Addiction Type</label>
+                <select
+                  value={formData.addictionType}
+                  onChange={(e) => setFormData({ ...formData, addictionType: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select addiction type</option>
+                  <option value="Alcohol">Alcohol</option>
+                  <option value="Nicotine">Nicotine</option>
+                  <option value="Gambling">Gambling</option>
+                  <option value="Food">Food</option>
+                  <option value="None">None</option>
+                </select>
+                  </div>
+
+                  <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Recovery Milestones (%)</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={formData.recoveryMilestones}
+                  onChange={(e) => setFormData({ ...formData, recoveryMilestones: parseInt(e.target.value) })}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>0%</span>
+                  <span>{formData.recoveryMilestones}%</span>
+                  <span>100%</span>
+                </div>
+              </div>
+                    </div>
+                  </div>
+
+          {/* Form Actions */}
+          <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={() => setIsEditing(false)}
+              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <FaCheck className="h-4 w-4" />
+                  <span>Save Changes</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="space-y-6">
+          {/* Profile Summary */}
+          <div className="flex items-center space-x-6">
+            <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 border-4 border-gray-200">
+              {profile.avatar ? (
+                <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-2xl font-bold">
+                  {profile.name?.charAt(0) || 'U'}
+                </div>
+              )}
+            </div>
+                  <div>
+              <h3 className="text-xl font-semibold text-gray-900">{profile.name}</h3>
+              <p className="text-gray-600">{profile.email}</p>
+              <p className="text-sm text-gray-500">{profile.age} years old • {profile.gender}</p>
+                    </div>
+                  </div>
+
+          {/* Health Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h4 className="text-sm font-medium text-blue-800 mb-2">Height</h4>
+              <p className="text-2xl font-bold text-blue-900">{profile.height} cm</p>
+            </div>
+            <div className="bg-green-50 p-4 rounded-lg">
+              <h4 className="text-sm font-medium text-green-800 mb-2">Weight</h4>
+              <p className="text-2xl font-bold text-green-900">{profile.weight} kg</p>
+            </div>
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <h4 className="text-sm font-medium text-purple-800 mb-2">BMI</h4>
+              <p className="text-2xl font-bold text-purple-900">{profile.bmi}</p>
+            </div>
+          </div>
+
+          {/* Recovery Progress */}
+          {profile.addictionType && profile.addictionType !== 'None' && (
+            <div className="bg-orange-50 p-4 rounded-lg">
+              <h4 className="text-sm font-medium text-orange-800 mb-2">Recovery Progress</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Type: {profile.addictionType}</span>
+                  <span>{profile.recoveryMilestones}% Complete</span>
+                </div>
+                <div className="w-full bg-orange-200 rounded-full h-2">
+                  <div
+                    className="bg-orange-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${profile.recoveryMilestones}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </motion.div>
+  );
+};
+
+// Privacy Tab Component
+const PrivacyTab = ({ privacy, onUpdate, onExport, onDelete, loading }) => {
+  const [localPrivacy, setLocalPrivacy] = useState(privacy);
+
+  useEffect(() => {
+    setLocalPrivacy(privacy);
+  }, [privacy]);
+
+  const handleSave = async () => {
+    await onUpdate(localPrivacy);
+  };
+
+  const handleToggle = (category, setting) => {
+    setLocalPrivacy(prev => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [setting]: !prev[category][setting]
+      }
+    }));
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+    >
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Privacy & Data Management</h2>
+        <button
+          onClick={handleSave}
+          disabled={loading}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 flex items-center space-x-2"
+        >
+          {loading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              <span>Saving...</span>
+            </>
+          ) : (
+            <>
+              <FaCheck className="h-4 w-4" />
+              <span>Save Changes</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      <div className="space-y-8">
+        {/* Data Sharing Settings */}
+                  <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Data Sharing Settings</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div>
+                <h4 className="font-medium text-gray-900">Share with Clinicians</h4>
+                <p className="text-sm text-gray-600">Allow healthcare providers to access your health data</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={localPrivacy.dataSharing.clinicians}
+                  onChange={() => handleToggle('dataSharing', 'clinicians')}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+                  </div>
+
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div>
+                <h4 className="font-medium text-gray-900">Share with Researchers</h4>
+                <p className="text-sm text-gray-600">Contribute to medical research (anonymized)</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={localPrivacy.dataSharing.researchers}
+                  onChange={() => handleToggle('dataSharing', 'researchers')}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+                  </div>
+
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div>
+                <h4 className="font-medium text-gray-900">Share with Family</h4>
+                <p className="text-sm text-gray-600">Allow family members to view your progress</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={localPrivacy.dataSharing.family}
+                  onChange={() => handleToggle('dataSharing', 'family')}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+          </div>
+                  </div>
+
+        {/* Health Data Visibility */}
+                  <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Health Data Visibility</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div>
+                <h4 className="font-medium text-gray-900">Lab Results</h4>
+                <p className="text-sm text-gray-600">Show laboratory test results in dashboards</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={localPrivacy.healthDataVisibility.labs}
+                  onChange={() => handleToggle('healthDataVisibility', 'labs')}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+                  </div>
+
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div>
+                <h4 className="font-medium text-gray-900">Health Reports</h4>
+                <p className="text-sm text-gray-600">Display health analysis reports</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={localPrivacy.healthDataVisibility.reports}
+                  onChange={() => handleToggle('healthDataVisibility', 'reports')}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+                  </div>
+
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div>
+                <h4 className="font-medium text-gray-900">Medications</h4>
+                <p className="text-sm text-gray-600">Show medication information</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={localPrivacy.healthDataVisibility.medications}
+                  onChange={() => handleToggle('healthDataVisibility', 'medications')}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+          </div>
+                  </div>
+
+        {/* Compliance Options */}
+                  <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Compliance Options</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div>
+                <h4 className="font-medium text-gray-900">GDPR Compliance</h4>
+                <p className="text-sm text-gray-600">European data protection regulations</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={localPrivacy.compliance.gdpr}
+                  onChange={() => handleToggle('compliance', 'gdpr')}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+                  </div>
+
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div>
+                <h4 className="font-medium text-gray-900">HIPAA Compliance</h4>
+                <p className="text-sm text-gray-600">US healthcare privacy standards</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={localPrivacy.compliance.hipaa}
+                  onChange={() => handleToggle('compliance', 'hipaa')}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+          </div>
+                  </div>
+
+        {/* Data Actions */}
+        <div className="border-t border-gray-200 pt-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Data Actions</h3>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button
+              onClick={onExport}
+              disabled={loading}
+              className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 disabled:opacity-50 flex items-center justify-center space-x-2"
+            >
+              <FaDownload className="h-4 w-4" />
+              <span>Export My Data</span>
+            </button>
+            <button
+              onClick={onDelete}
+              disabled={loading}
+              className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 disabled:opacity-50 flex items-center justify-center space-x-2"
+            >
+              <FaTrash className="h-4 w-4" />
+              <span>Delete Account</span>
+            </button>
+                  </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// Subscription Tab Component
+const SubscriptionTab = ({ subscription, onChange, loading }) => {
+  const plans = [
+    { name: 'Silver', price: 9.99, features: ['Basic AI recommendations', 'Standard meal plans', 'Email support'] },
+    { name: 'Gold', price: 14.99, features: ['Advanced AI analysis', 'Custom meal plans', 'Priority support', 'Health tracking'] },
+    { name: 'Platinum', price: 19.99, features: ['Premium AI features', 'Personal nutritionist', '24/7 support', 'All integrations'] }
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+    >
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">Subscription & Billing</h2>
+      
+      <div className="space-y-6">
+        {/* Current Plan */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-100 p-6 rounded-xl border border-blue-200">
+          <h3 className="text-lg font-semibold text-blue-900 mb-2">Current Plan</h3>
+          <div className="flex items-center justify-between">
+                  <div>
+              <p className="text-2xl font-bold text-blue-900">{subscription.plan}</p>
+              <p className="text-blue-700">${subscription.amount}/month</p>
+              <p className="text-sm text-blue-600">Next billing: {subscription.nextBilling}</p>
+                  </div>
+            <div className="text-right">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                {subscription.status}
+              </span>
+                </div>
+                </div>
+        </div>
+
+        {/* Plan Comparison */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Available Plans</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {plans.map((plan) => (
+              <div
+                key={plan.name}
+                className={`p-6 rounded-xl border-2 ${
+                  plan.name === subscription.plan
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <h4 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h4>
+                <p className="text-3xl font-bold text-gray-900 mb-4">${plan.price}<span className="text-lg text-gray-500">/month</span></p>
+                <ul className="space-y-2 mb-6">
+                  {plan.features.map((feature, index) => (
+                    <li key={index} className="flex items-center text-sm text-gray-600">
+                      <FaCheck className="h-4 w-4 text-green-500 mr-2" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+                {plan.name === subscription.plan ? (
+                  <button className="w-full px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed">
+                    Current Plan
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onChange(plan.name)}
+                    disabled={loading}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50"
+                  >
+                    {loading ? 'Upgrading...' : `Upgrade to ${plan.name}`}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Billing Information */}
+        <div className="border-t border-gray-200 pt-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Billing Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-2">Payment Method</h4>
+              <p className="text-gray-600">{subscription.paymentMethod}</p>
+            </div>
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-2">Auto-Renewal</h4>
+              <p className="text-gray-600">{subscription.autoRenew ? 'Enabled' : 'Disabled'}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// Personalization Tab Component
+const PersonalizationTab = ({ personalization, onUpdate, loading }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+    >
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">Personalization & AI Settings</h2>
+      
+      <div className="space-y-6">
+        {/* AI Feedback */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Feedback Preferences</h3>
+                <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">AI Recommendation Style</label>
+              <select
+                value={personalization.aiFeedback}
+                onChange={(e) => onUpdate('aiFeedback', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="strict">Strict (Conservative recommendations)</option>
+                <option value="balanced">Balanced (Moderate approach)</option>
+                <option value="flexible">Flexible (More adventurous suggestions)</option>
+              </select>
+                </div>
+          </div>
+        </div>
+
+        {/* Adaptive Learning */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Adaptive Learning</h3>
+                <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div>
+                <h4 className="font-medium text-gray-900">Enable Adaptive Learning</h4>
+                <p className="text-sm text-gray-600">AI learns from your preferences and adjusts recommendations</p>
+                </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={personalization.adaptiveLearning}
+                  onChange={(e) => onUpdate('adaptiveLearning', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+              </div>
+          </div>
+        </div>
+
+        {/* Advanced Settings */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Advanced AI Settings</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">AI Model Version</label>
+              <select
+                value={personalization.aiModelVersion}
+                onChange={(e) => onUpdate('aiModelVersion', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="gpt-4o-mini">GPT-4o Mini (Fast & Efficient)</option>
+                <option value="gpt-4o">GPT-4o (High Quality)</option>
+                <option value="gpt-4-turbo">GPT-4 Turbo (Balanced)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Prediction Confidence</label>
+              <select
+                value={personalization.predictionConfidence}
+                onChange={(e) => onUpdate('predictionConfidence', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="low">Low (More conservative)</option>
+                <option value="medium">Medium (Balanced)</option>
+                <option value="high">High (More aggressive)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+          </motion.div>
+  );
+};
+
+// Integrations Tab Component
+const IntegrationsTab = ({ integrations, onToggle, loading }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+    >
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">Integrations</h2>
+      
+      <div className="space-y-8">
+        {/* Wearables & Health Apps */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Wearables & Health Apps</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {Object.entries(integrations.wearables).map(([provider, data]) => (
+              <div key={provider} className="p-4 border border-gray-200 rounded-lg">
+                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center space-x-3">
+                    {provider === 'fitbit' && <FaHeart className="h-6 w-6 text-pink-500" />}
+                    {provider === 'appleHealth' && <FaApple className="h-6 w-6 text-green-500" />}
+                    {provider === 'googleFit' && <FaGoogle className="h-6 w-6 text-blue-500" />}
+                    <span className="font-medium text-gray-900 capitalize">{provider.replace(/([A-Z])/g, ' $1')}</span>
+        </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600">
+                    Status: {data.connected ? 'Connected' : 'Not connected'}
+                  </p>
+                  {data.lastSync && (
+                    <p className="text-xs text-gray-500">
+                      Last sync: {new Date(data.lastSync).toLocaleDateString()}
+                    </p>
+                  )}
+                  <button
+                    onClick={() => onToggle('wearables', provider)}
+                    disabled={loading}
+                    className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                      data.connected
+                        ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                        : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                    } disabled:opacity-50`}
+                  >
+                    {loading ? 'Processing...' : data.connected ? 'Disconnect' : 'Connect'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Medical Portals */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Medical Portals & Lab Integration</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Object.entries(integrations.medicalPortals).map(([provider, data]) => (
+              <div key={provider} className="p-4 border border-gray-200 rounded-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="h-6 w-6 bg-blue-500 rounded flex items-center justify-center text-white text-xs font-bold">
+                      {provider.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="font-medium text-gray-900 capitalize">{provider.replace(/([A-Z])/g, ' $1')}</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600">
+                    Status: {data.connected ? 'Connected' : 'Not connected'}
+                  </p>
+                  <button
+                    onClick={() => onToggle('medicalPortals', provider)}
+                    disabled={loading}
+                    className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                      data.connected
+                        ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                        : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                    } disabled:opacity-50`}
+                  >
+                    {loading ? 'Processing...' : data.connected ? 'Disconnect' : 'Connect'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Calendar Sync */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Calendar Integration</h3>
+          <div className="p-4 border border-gray-200 rounded-lg">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-3">
+                <FaCalendarAlt className="h-6 w-6 text-blue-500" />
+                <span className="font-medium text-gray-900">Google Calendar</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-gray-600">
+                Status: {integrations.calendar.connected ? 'Connected' : 'Not connected'}
+              </p>
+              <button
+                onClick={() => onToggle('calendar', 'google')}
+                disabled={loading}
+                className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  integrations.calendar.connected
+                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                } disabled:opacity-50`}
+              >
+                {loading ? 'Processing...' : integrations.calendar.connected ? 'Disconnect' : 'Connect'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// Security Tab Component
+const SecurityTab = ({ security, onToggle, loading }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+    >
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">Security & Access</h2>
+      
+            <div className="space-y-6">
+        {/* Two-Factor Authentication */}
+                  <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Two-Factor Authentication</h3>
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div>
+              <h4 className="font-medium text-gray-900">2FA Status</h4>
+              <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
+                  </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={security.twoFactorEnabled}
+                onChange={(e) => onToggle('twoFactorEnabled', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
               </div>
 
-              {/* 2FA */}
-              <div className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2"><FaShieldAlt className="text-purple-500" /><div><h3 className="font-semibold text-gray-900">Two-Factor Authentication</h3><p className="text-sm text-gray-600">Use an authenticator app for extra security.</p></div></div>
-                  <button onClick={toggle2FA} className={`px-4 py-2 rounded-md ${twoFAEnabled ? 'bg-purple-600 text-white' : 'border text-purple-700'}`}>{twoFAEnabled ? 'Disable' : 'Enable'}</button>
+        {/* Login Methods */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Login Methods</h3>
+          <div className="space-y-3">
+            {security.loginMethods.map((method) => (
+              <div key={method} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  {method === 'email' && <FaUser className="h-5 w-5 text-blue-500" />}
+                  {method === 'google' && <FaGoogle className="h-5 w-5 text-red-500" />}
+                  <span className="font-medium text-gray-900 capitalize">{method}</span>
+                </div>
+                <span className="text-sm text-green-600 font-medium">Active</span>
+              </div>
+            ))}
                 </div>
               </div>
 
-              {/* Notifications */}
-              <div className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3"><FaBell className="text-green-500" /><h3 className="font-semibold text-gray-900">Notification Preferences</h3></div>
-                <div className="flex flex-col gap-2">
-                  <label className="inline-flex items-center gap-2"><input type="checkbox" checked={notify.email} onChange={e=>setNotify({...notify,email:e.target.checked})} /> Email</label>
-                  <label className="inline-flex items-center gap-2"><input type="checkbox" checked={notify.sms} onChange={e=>setNotify({...notify,sms:e.target.checked})} /> SMS</label>
-                  <label className="inline-flex items-center gap-2"><input type="checkbox" checked={notify.push} onChange={e=>setNotify({...notify,push:e.target.checked})} /> Push</label>
-                  <div className="flex justify-end"><button onClick={saveNotifications} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Save</button></div>
+        {/* Biometric Authentication */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Biometric Authentication</h3>
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div>
+              <h4 className="font-medium text-gray-900">Fingerprint/Face ID</h4>
+              <p className="text-sm text-gray-600">Use biometric authentication on supported devices</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={security.biometricEnabled}
+                onChange={(e) => onToggle('biometricEnabled', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
                 </div>
                         </div>
 
-              {/* Linked accounts */}
-              <div className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3"><FaShieldAlt className="text-gray-600" /><h3 className="font-semibold text-gray-900">Linked Accounts</h3></div>
-                <div className="flex gap-3 flex-wrap">
-                  <button onClick={()=>toggleLink('google')} className={`inline-flex items-center gap-2 px-4 py-2 rounded-md ${linked.google?'bg-red-50 text-red-700 border-red-300 border':'border'}`} aria-label="Link Google"><FaGoogle /> {linked.google?'Unlink Google':'Link Google'}</button>
-                  <button onClick={()=>toggleLink('facebook')} className={`inline-flex items-center gap-2 px-4 py-2 rounded-md ${linked.facebook?'bg-red-50 text-red-700 border-red-300 border':'border'}`} aria-label="Link Facebook"><FaFacebook /> {linked.facebook?'Unlink Facebook':'Link Facebook'}</button>
+        {/* Session Management */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Session Management</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Session Timeout (minutes)</label>
+              <select
+                value={security.sessionTimeout}
+                onChange={(e) => onToggle('sessionTimeout', parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value={15}>15 minutes</option>
+                <option value={30}>30 minutes</option>
+                <option value={60}>1 hour</option>
+                <option value={120}>2 hours</option>
+              </select>
                 </div>
+            <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200">
+              Logout from All Devices
+            </button>
                         </div>
-                        
-              {/* Language / Timezone */}
-              <div className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3"><FaLanguage className="text-indigo-500" /><h3 className="font-semibold text-gray-900">Language & Time Zone</h3></div>
-                <div className="grid md:grid-cols-3 gap-3">
-                  <select value={language} onChange={e=>setLanguage(e.target.value)} className="px-3 py-2 border rounded-md" aria-label="Language">
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// System Tab Component
+const SystemTab = ({ system, onUpdate, loading }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+    >
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">System & App Preferences</h2>
+      
+      <div className="space-y-6">
+        {/* Theme Settings */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Appearance</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Theme</label>
+              <select
+                value={system.theme}
+                onChange={(e) => onUpdate('theme', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="high-contrast">High Contrast</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
+              <select
+                value={system.language}
+                onChange={(e) => onUpdate('language', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
                     <option value="en">English</option>
-                    <option value="es">Spanish</option>
-                    <option value="fr">French</option>
-                    <option value="de">German</option>
+                <option value="es">Español</option>
+                <option value="fr">Français</option>
+                <option value="de">Deutsch</option>
+                <option value="hi">हिंदी</option>
+                <option value="zh">中文</option>
                   </select>
-                  <select value={timeZone} onChange={e=>setTimeZone(e.target.value)} className="px-3 py-2 border rounded-md" aria-label="Time Zone">
-                    {Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone').map(tz => (<option key={tz} value={tz}>{tz}</option>)) : (<option value="UTC">UTC</option>)}
-                  </select>
-                  <div className="flex items-center justify-end"><button onClick={saveLocale} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save</button></div>
+            </div>
                 </div>
               </div>
 
-              {/* Session timeout */}
-              <div className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3"><FaGlobe className="text-teal-600" /><h3 className="font-semibold text-gray-900">Session Timeout</h3></div>
-                <div className="grid md:grid-cols-3 gap-3 items-center">
-                  <label className="text-sm text-gray-700" htmlFor="timeout">Auto-logout after minutes of inactivity</label>
-                  <input id="timeout" type="number" min={5} max={240} value={sessionTimeout} onChange={e=>setSessionTimeout(Number(e.target.value))} className="px-3 py-2 border rounded-md" aria-label="Session timeout minutes" />
-                  <div className="flex justify-end"><button onClick={saveSessionTimeout} className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700">Save</button></div>
+        {/* Units & Measurements */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Units & Measurements</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Weight & Distance</label>
+              <select
+                value={system.units}
+                onChange={(e) => onUpdate('units', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="metric">Metric (kg, cm)</option>
+                <option value="imperial">Imperial (lbs, in)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Default Dashboard View</label>
+              <select
+                value={system.defaultView}
+                onChange={(e) => onUpdate('defaultView', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="dashboard">Main Dashboard</option>
+                <option value="health">Health Overview</option>
+                <option value="nutrition">Nutrition Tracker</option>
+                <option value="recovery">Recovery Progress</option>
+              </select>
+            </div>
                         </div>
                       </div>
 
-              {/* Danger zone */}
-              <div className="border border-red-200 rounded-lg p-4 bg-red-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3"><FaTrash className="h-5 w-5 text-red-500" /><div><h3 className="font-semibold text-gray-900">Delete Account</h3><p className="text-sm text-gray-600">Permanently delete your account and all data</p></div></div>
-                  <button onClick={()=>setShowDeleteConfirm(true)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
+        {/* Notification Preferences */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Notification Preferences</h3>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="font-medium text-gray-900">Push Notifications</span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" defaultChecked className="sr-only peer" />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="font-medium text-gray-900">Email Notifications</span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" defaultChecked className="sr-only peer" />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
                 </div>
               </div>
                 </div>
               </motion.div>
+  );
+};
+
+// Help Tab Component
+const HelpTab = ({ loading }) => {
+  const [activeSection, setActiveSection] = useState('faq');
+
+  const faqs = [
+    {
+      question: "How do I update my health information?",
+      answer: "Go to the Profile & Account tab in Settings and click 'Edit Profile' to modify your health data."
+    },
+    {
+      question: "Can I export my health data?",
+      answer: "Yes! In the Privacy & Data tab, you can export all your data in JSON format for backup or transfer."
+    },
+    {
+      question: "How do I connect my fitness tracker?",
+      answer: "Visit the Integrations tab and click 'Connect' next to your device or app to sync your data."
+    },
+    {
+      question: "What subscription plans are available?",
+      answer: "We offer Silver ($9.99), Gold ($29.99), and Platinum ($49.99) plans with different feature sets."
+    }
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+    >
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">Help & Support</h2>
+      
+      <div className="space-y-6">
+        {/* Navigation Tabs */}
+        <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+          {['faq', 'contact', 'tutorials', 'feedback'].map((section) => (
+            <button
+              key={section}
+              onClick={() => setActiveSection(section)}
+              className={`flex-1 py-2 px-4 rounded-md transition-colors ${
+                activeSection === section
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              {section.charAt(0).toUpperCase() + section.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* FAQ Section */}
+        {activeSection === 'faq' && (
+          <div className="space-y-4">
+            {faqs.map((faq, index) => (
+              <div key={index} className="border border-gray-200 rounded-lg p-4">
+                <h4 className="font-medium text-gray-900 mb-2">{faq.question}</h4>
+                <p className="text-gray-600">{faq.answer}</p>
+              </div>
+            ))}
         </div>
       )}
 
-      {/* Delete confirmation */}
-      {showDeleteConfirm && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-2xl p-6 w-full max-w-md mx-4" role="dialog" aria-modal="true" aria-labelledby="delete-title">
-            <div className="flex items-center space-x-3 mb-4"><FaTrash className="h-6 w-6 text-red-500" /><h3 id="delete-title" className="text-lg font-semibold text-gray-900">Delete Account</h3></div>
-            <p className="text-gray-600 mb-6">Are you sure you want to delete your account? This action cannot be undone.</p>
-            <div className="flex space-x-3">
-              <button onClick={()=>setShowDeleteConfirm(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
-              <button onClick={handleDeleteAccount} className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Delete Account</button>
+        {/* Contact Support */}
+        {activeSection === 'contact' && (
+          <div className="space-y-4">
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h4 className="font-medium text-blue-900 mb-2">Email Support</h4>
+              <p className="text-blue-700">support@nutriai.com</p>
+              <p className="text-sm text-blue-600 mt-1">Response within 24 hours</p>
             </div>
-          </motion.div>
-        </motion.div>
-      )}
+            <div className="p-4 bg-green-50 rounded-lg">
+              <h4 className="font-medium text-green-900 mb-2">Live Chat</h4>
+              <p className="text-green-700">Available 9 AM - 6 PM EST</p>
+              <button className="mt-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                Start Chat
+              </button>
+            </div>
+            <div className="p-4 bg-purple-50 rounded-lg">
+              <h4 className="font-medium text-purple-900 mb-2">Phone Support</h4>
+              <p className="text-purple-700">1-800-NUTRI-AI</p>
+              <p className="text-sm text-purple-600 mt-1">Monday - Friday, 9 AM - 5 PM EST</p>
+            </div>
+          </div>
+        )}
+
+        {/* Tutorials */}
+        {activeSection === 'tutorials' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 border border-gray-200 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-2">Getting Started</h4>
+                <p className="text-sm text-gray-600 mb-3">Learn the basics of using NutriAI</p>
+                <button className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+                  Watch Tutorial
+                </button>
     </div>
+              <div className="p-4 border border-gray-200 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-2">Advanced Features</h4>
+                <p className="text-sm text-gray-600 mb-3">Master advanced AI features</p>
+                <button className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+                  Watch Tutorial
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Feedback */}
+        {activeSection === 'feedback' && (
+          <div className="space-y-4">
+            <div className="p-4 bg-yellow-50 rounded-lg">
+              <h4 className="font-medium text-yellow-900 mb-2">Report a Bug</h4>
+              <p className="text-yellow-700 mb-3">Help us improve by reporting any issues you encounter</p>
+              <button className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">
+                Report Bug
+              </button>
+            </div>
+            <div className="p-4 bg-indigo-50 rounded-lg">
+              <h4 className="font-medium text-indigo-900 mb-2">Feature Request</h4>
+              <p className="text-indigo-700 mb-3">Suggest new features you'd like to see</p>
+              <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                Request Feature
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </motion.div>
   );
 };
 

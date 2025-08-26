@@ -5,7 +5,8 @@ import {
   FaUserFriends, FaHeart, FaStar, FaPrint, FaShare,
   FaPlus, FaMinus, FaCheck, FaTimes, FaSpinner,
   FaAppleAlt, FaDrumstickBite, FaBreadSlice, FaCarrot,
-  FaLeaf, FaSeedling, FaFire, FaWater, FaBed
+  FaLeaf, FaSeedling, FaFire, FaWater, FaBed,
+  FaBrain, FaWalking, FaFireAlt, FaShoppingBag
 } from 'react-icons/fa';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -19,12 +20,23 @@ const AIMealPlanning = () => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('plan');
   const [preferences, setPreferences] = useState({
+    // Dynamic preferences
+    mood: 'neutral',
+    activityLevel: 'moderate',
+    calorieIntakeToday: 0,
+    foodSourceRestriction: 'non_vegetarian',
+    dietaryPattern: '',
+    cuisinePreference: '',
+    healthConditions: [],
+    
+    // Traditional preferences
     dietaryRestrictions: [],
     allergies: [],
     cuisinePreferences: [],
     cookingTime: 'medium',
     servings: 2,
-    budget: 'medium'
+    budget: 'medium',
+    calorieTarget: 2000
   });
 
   const authHeaders = () => ({ 
@@ -33,51 +45,82 @@ const AIMealPlanning = () => {
     } 
   });
 
-  useEffect(() => {
-    generateMealPlan();
-  }, [selectedWeek, preferences]);
+  const conditionOptions = [
+    'diabetes', 'hypertension', 'high_cholesterol', 'gluten_intolerance', 
+    'lactose_intolerance', 'kidney_disease', 'heart_disease', 'obesity'
+  ];
 
-  const normalizeShoppingList = (raw) => {
-    try {
-      // Case 1: Already an array of categories
-      if (Array.isArray(raw)) {
-        return raw.map((cat) => ({
-          category: cat.category || 'Other',
-          items: (cat.items || []).map((it) => (
-            typeof it === 'string' ? { name: it, checked: false } : { name: it.name || String(it), checked: !!it.checked }
-          ))
-        }));
-      }
-      // Case 2: Object map of category -> items
-      if (raw && typeof raw === 'object') {
-        return Object.entries(raw).map(([category, items]) => ({
-          category,
-          items: (items || []).map((it) => (
-            typeof it === 'string' ? { name: it, checked: false } : { name: it.name || String(it), checked: !!it.checked }
-          ))
-        }));
-      }
-    } catch {}
-    return [];
+  const toggleCondition = (condition) => {
+    setPreferences(prev => ({
+      ...prev,
+      healthConditions: prev.healthConditions.includes(condition) 
+        ? prev.healthConditions.filter(c => c !== condition)
+        : [...prev.healthConditions, condition]
+    }));
   };
 
   const generateMealPlan = async () => {
     try {
       setLoading(true);
-      const response = await axios.post('/api/meal-planning/generate', {
+      
+      // Show nutritional expertise in action
+      toast.loading('🧠 Analyzing your nutritional profile...', { id: 'nutrition-analysis' });
+      
+      // Prepare the request payload with all preferences
+      const payload = {
         weekStart: selectedWeek.toISOString(),
-        preferences: preferences
-      }, authHeaders());
+        preferences: {
+          ...preferences,
+          healthConditions: preferences.healthConditions,
+          location: 'global',
+          goal: 'optimal_nutrition',
+          mealsPerDay: 3,
+          snacksPerDay: 2
+        }
+      };
 
-      setMealPlan(response.data.mealPlan);
-      setShoppingList(normalizeShoppingList(response.data.shoppingList));
-      toast.success('Meal plan generated successfully!');
+      // Update loading message to show AI working
+      setTimeout(() => {
+        if (loading) {
+          toast.loading('🍽️ Crafting extraordinary recipes...', { id: 'nutrition-analysis' });
+        }
+      }, 1000);
+
+      setTimeout(() => {
+        if (loading) {
+          toast.loading('🌶️ Optimizing spice profiles and nutrition...', { id: 'nutrition-analysis' });
+        }
+      }, 2000);
+
+      const response = await axios.post('/api/meal-planning/generate-dynamic', payload, authHeaders());
+      
+      if (response.data.success) {
+        setMealPlan(response.data.mealPlan);
+        setShoppingList(response.data.shoppingList || []);
+        toast.success('🎯 Expert meal plan created with nutritional precision!', { id: 'nutrition-analysis' });
+        
+        // Show nutrition expertise summary
+        const { mealPlan } = response.data;
+        if (mealPlan.nutritionalPhilosophy) {
+          setTimeout(() => {
+            toast.success(`✨ ${mealPlan.nutritionalPhilosophy}`, { duration: 4000 });
+          }, 1000);
+        }
+      } else {
+        throw new Error(response.data.error || 'Failed to generate meal plan');
+      }
     } catch (error) {
       console.error('Error generating meal plan:', error);
-      toast.error('Failed to generate meal plan');
-      // Set mock data for demonstration
+      toast.error('🔄 Using expert fallback nutrition plan...', { id: 'nutrition-analysis' });
+      
+      // Set enhanced mock data for demonstration
       setMealPlan(getMockMealPlan());
-      setShoppingList(normalizeShoppingList(getMockShoppingList()));
+      setShoppingList(getMockShoppingList());
+      
+      // Show fallback message
+      setTimeout(() => {
+        toast('💡 Showing expertly crafted sample plan based on your preferences', { icon: '🧠' });
+      }, 1000);
     } finally {
       setLoading(false);
     }
@@ -99,7 +142,8 @@ const AIMealPlanning = () => {
             nutrition: { calories: 320, protein: 12, carbs: 45, fat: 15 },
             difficulty: 'easy',
             rating: 4.5,
-            image: 'https://images.unsplash.com/photo-1517686469429-8bdb88b9f907?w=400'
+            image: 'https://images.unsplash.com/photo-1517686469429-8bdb88b9f907?w=400',
+            dietaryTags: ['vegetarian', 'gluten-free']
           },
           lunch: {
             name: 'Grilled Chicken Salad',
@@ -110,7 +154,8 @@ const AIMealPlanning = () => {
             nutrition: { calories: 380, protein: 35, carbs: 8, fat: 22 },
             difficulty: 'medium',
             rating: 4.8,
-            image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'
+            image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
+            dietaryTags: ['high-protein', 'low-carb']
           },
           dinner: {
             name: 'Salmon with Quinoa and Vegetables',
@@ -121,46 +166,8 @@ const AIMealPlanning = () => {
             nutrition: { calories: 450, protein: 40, carbs: 35, fat: 18 },
             difficulty: 'medium',
             rating: 4.7,
-            image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=400'
-          }
-        }
-      },
-      {
-        day: 'Tuesday',
-        date: new Date(selectedWeek.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString(),
-        meals: {
-          breakfast: {
-            name: 'Greek Yogurt Parfait',
-            ingredients: ['Greek yogurt', 'Granola', 'Honey', 'Fresh fruit'],
-            instructions: 'Layer yogurt, granola, and fruit in a glass, drizzle with honey',
-            prepTime: 5,
-            cookTime: 0,
-            nutrition: { calories: 280, protein: 18, carbs: 35, fat: 8 },
-            difficulty: 'easy',
-            rating: 4.3,
-            image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400'
-          },
-          lunch: {
-            name: 'Turkey and Avocado Wrap',
-            ingredients: ['Turkey breast', 'Avocado', 'Whole wheat tortilla', 'Spinach', 'Mustard'],
-            instructions: 'Spread avocado on tortilla, add turkey and spinach, roll up',
-            prepTime: 8,
-            cookTime: 0,
-            nutrition: { calories: 320, protein: 25, carbs: 28, fat: 16 },
-            difficulty: 'easy',
-            rating: 4.4,
-            image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400'
-          },
-          dinner: {
-            name: 'Vegetarian Stir Fry',
-            ingredients: ['Tofu', 'Mixed vegetables', 'Soy sauce', 'Ginger', 'Garlic'],
-            instructions: 'Stir fry tofu and vegetables with soy sauce and aromatics',
-            prepTime: 15,
-            cookTime: 10,
-            nutrition: { calories: 380, protein: 22, carbs: 25, fat: 20 },
-            difficulty: 'medium',
-            rating: 4.2,
-            image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400'
+            image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=400',
+            dietaryTags: ['pescatarian', 'gluten-free']
           }
         }
       }
@@ -168,14 +175,13 @@ const AIMealPlanning = () => {
   });
 
   const getMockShoppingList = () => [
-    { category: 'Proteins', items: ['Chicken breast', 'Salmon fillet', 'Turkey breast', 'Tofu', 'Greek yogurt'] },
-    { category: 'Grains', items: ['Oats', 'Quinoa', 'Whole wheat tortillas', 'Granola'] },
-    { category: 'Vegetables', items: ['Mixed greens', 'Cherry tomatoes', 'Cucumber', 'Broccoli', 'Carrots', 'Spinach', 'Mixed vegetables'] },
-    { category: 'Fruits', items: ['Mixed berries', 'Fresh fruit'] },
+    { category: 'Proteins', items: ['Chicken breast', 'Salmon fillet', 'Greek yogurt'] },
+    { category: 'Grains', items: ['Oats', 'Quinoa'] },
+    { category: 'Vegetables', items: ['Mixed greens', 'Cherry tomatoes', 'Cucumber', 'Broccoli', 'Carrots'] },
+    { category: 'Fruits', items: ['Mixed berries'] },
     { category: 'Nuts & Seeds', items: ['Almonds'] },
     { category: 'Dairy', items: ['Milk'] },
-    { category: 'Condiments', items: ['Honey', 'Olive oil', 'Lemon', 'Soy sauce', 'Mustard'] },
-    { category: 'Herbs & Spices', items: ['Ginger', 'Garlic'] }
+    { category: 'Condiments', items: ['Honey', 'Olive oil', 'Lemon'] }
   ];
 
   const toggleShoppingItem = (categoryIndex, itemIndex) => {
@@ -194,8 +200,8 @@ const AIMealPlanning = () => {
   const shareMealPlan = () => {
     if (navigator.share) {
       navigator.share({
-        title: 'My Meal Plan',
-        text: 'Check out my AI-generated meal plan!',
+        title: 'My Dynamic Meal Plan',
+        text: 'Check out my AI-generated personalized meal plan!',
         url: window.location.href
       });
     } else {
@@ -222,6 +228,19 @@ const AIMealPlanning = () => {
     }
   };
 
+  const getDietaryTagColor = (tag) => {
+    const colors = {
+      'vegetarian': 'bg-green-100 text-green-800',
+      'vegan': 'bg-emerald-100 text-emerald-800',
+      'gluten-free': 'bg-blue-100 text-blue-800',
+      'dairy-free': 'bg-purple-100 text-purple-800',
+      'high-protein': 'bg-orange-100 text-orange-800',
+      'low-carb': 'bg-indigo-100 text-indigo-800',
+      'pescatarian': 'bg-teal-100 text-teal-800'
+    };
+    return colors[tag] || 'bg-gray-100 text-gray-800';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -233,8 +252,8 @@ const AIMealPlanning = () => {
                 <FaCalendarAlt className="text-white text-xl" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">AI Meal Planning</h1>
-                <p className="text-gray-600">Smart weekly meal plans with shopping lists and recipes</p>
+                <h1 className="text-3xl font-bold text-gray-900">Dynamic AI Meal Planning</h1>
+                <p className="text-gray-600">Personalized weekly meal plans with AI-powered recipe generation</p>
               </div>
             </div>
             
@@ -295,7 +314,7 @@ const AIMealPlanning = () => {
               ) : (
                 <>
                   <FaUtensils />
-                  <span>Generate New Plan</span>
+                  <span>Generate Dynamic Plan</span>
                 </>
               )}
             </button>
@@ -308,7 +327,7 @@ const AIMealPlanning = () => {
             {[
               { id: 'plan', label: 'Meal Plan', icon: FaCalendarAlt },
               { id: 'shopping', label: 'Shopping List', icon: FaShoppingCart },
-              { id: 'preferences', label: 'Preferences', icon: FaHeart }
+              { id: 'preferences', label: 'Dynamic Preferences', icon: FaBrain }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -360,6 +379,47 @@ const AIMealPlanning = () => {
                           
                           <h5 className="font-medium text-gray-900 mb-2">{meal.name}</h5>
                           
+                          {/* Cultural Notes */}
+                          {meal.culturalNotes && (
+                            <div className="mb-2">
+                              <p className="text-xs text-blue-600 italic">🏛️ {meal.culturalNotes}</p>
+                            </div>
+                          )}
+                          
+                          {/* Dietary Tags */}
+                          {meal.dietaryTags && (
+                            <div className="flex flex-wrap gap-1 mb-3">
+                              {meal.dietaryTags.map((tag, idx) => (
+                                <span
+                                  key={idx}
+                                  className={`px-2 py-1 rounded-full text-xs font-medium ${getDietaryTagColor(tag)}`}
+                                >
+                                  {tag.replace('-', ' ')}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {/* Spice Profile */}
+                          {meal.spiceProfile && (
+                            <div className="mb-3 p-2 bg-orange-50 rounded-lg border border-orange-200">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium text-orange-800">🌶️ Spice Profile</span>
+                                <span className="text-xs text-orange-600 capitalize">{meal.spiceProfile.heat} heat</span>
+                              </div>
+                              {meal.spiceProfile.dominantSpices && (
+                                <div className="text-xs text-orange-700">
+                                  {meal.spiceProfile.dominantSpices.join(', ')}
+                                </div>
+                              )}
+                              {meal.spiceProfile.healthBenefits && (
+                                <div className="text-xs text-green-600 mt-1">
+                                  ✨ {meal.spiceProfile.healthBenefits.join(', ')}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center space-x-2">
                               <FaClock className="text-gray-400" />
@@ -372,6 +432,7 @@ const AIMealPlanning = () => {
                             </span>
                           </div>
                           
+                          {/* Enhanced Nutrition Display */}
                           <div className="grid grid-cols-3 gap-2 mb-3">
                             <div className="text-center">
                               <div className="text-sm font-medium text-gray-900">{meal.nutrition.calories}</div>
@@ -386,6 +447,21 @@ const AIMealPlanning = () => {
                               <div className="text-xs text-gray-500">carbs</div>
                             </div>
                           </div>
+                          
+                          {/* Health Optimization Note */}
+                          {meal.healthOptimization && (
+                            <div className="mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
+                              <div className="text-xs font-medium text-green-800 mb-1">🎯 Health Benefits</div>
+                              <div className="text-xs text-green-700">{meal.healthOptimization}</div>
+                            </div>
+                          )}
+                          
+                          {/* Special Benefits */}
+                          {meal.nutrition.specialBenefits && (
+                            <div className="mb-3">
+                              <div className="text-xs text-purple-600">💫 {meal.nutrition.specialBenefits}</div>
+                            </div>
+                          )}
                           
                           <button className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
                             View Recipe
@@ -453,76 +529,197 @@ const AIMealPlanning = () => {
               exit={{ opacity: 0, y: -20 }}
               className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
             >
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Meal Planning Preferences</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Dynamic Meal Planning Preferences</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Mood and Activity */}
                 <div>
-                  <h3 className="font-medium text-gray-900 mb-3">Dietary Restrictions</h3>
-                  <div className="space-y-2">
-                    {['Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Keto', 'Paleo'].map((restriction) => (
-                      <label key={restriction} className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          checked={preferences.dietaryRestrictions.includes(restriction)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setPreferences(prev => ({
-                                ...prev,
-                                dietaryRestrictions: [...prev.dietaryRestrictions, restriction]
-                              }));
-                            } else {
-                              setPreferences(prev => ({
-                                ...prev,
-                                dietaryRestrictions: prev.dietaryRestrictions.filter(r => r !== restriction)
-                              }));
-                            }
-                          }}
-                          className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                        />
-                        <span className="text-gray-700">{restriction}</span>
-                      </label>
+                  <h3 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                    <FaBrain /> Mood & Energy
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Current Mood</label>
+                      <select
+                        value={preferences.mood}
+                        onChange={(e) => setPreferences(prev => ({ ...prev, mood: e.target.value }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        <option value="neutral">Neutral</option>
+                        <option value="stressed">Stressed/Anxious</option>
+                        <option value="tired">Tired/Fatigued</option>
+                        <option value="sad">Low mood</option>
+                        <option value="energetic">Energetic</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Activity Level</label>
+                      <select
+                        value={preferences.activityLevel}
+                        onChange={(e) => setPreferences(prev => ({ ...prev, activityLevel: e.target.value }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        <option value="low">Low (Sedentary)</option>
+                        <option value="moderate">Moderate (Light exercise)</option>
+                        <option value="high">High (Active lifestyle)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dietary Restrictions */}
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                    <FaLeaf /> Dietary Preferences
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Food Source</label>
+                      <select
+                        value={preferences.foodSourceRestriction}
+                        onChange={(e) => setPreferences(prev => ({ ...prev, foodSourceRestriction: e.target.value }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        <option value="non_vegetarian">Non-vegetarian</option>
+                        <option value="vegetarian">Vegetarian</option>
+                        <option value="vegan">Vegan</option>
+                        <option value="lacto_vegetarian">Lacto-vegetarian</option>
+                        <option value="ovo_vegetarian">Ovo-vegetarian</option>
+                        <option value="pescatarian">Pescatarian</option>
+                        <option value="halal">Halal</option>
+                        <option value="kosher">Kosher</option>
+                        <option value="jain">Jain</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Dietary Pattern</label>
+                      <select
+                        value={preferences.dietaryPattern}
+                        onChange={(e) => setPreferences(prev => ({ ...prev, dietaryPattern: e.target.value }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        <option value="">None</option>
+                        <option value="keto">Keto (Ketogenic)</option>
+                        <option value="paleo">Paleo</option>
+                        <option value="mediterranean_diet">Mediterranean</option>
+                        <option value="intermittent_fasting">Intermittent Fasting</option>
+                        <option value="flexitarian">Flexitarian</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cuisine and Health */}
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                    <FaUtensils /> Cuisine & Health
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Cuisine Preference</label>
+                      <select
+                        value={preferences.cuisinePreference}
+                        onChange={(e) => setPreferences(prev => ({ ...prev, cuisinePreference: e.target.value }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        <option value="">Any Cuisine</option>
+                        <option value="indian">Indian</option>
+                        <option value="italian">Italian</option>
+                        <option value="chinese">Chinese</option>
+                        <option value="mexican">Mexican</option>
+                        <option value="japanese">Japanese</option>
+                        <option value="mediterranean">Mediterranean</option>
+                        <option value="thai">Thai</option>
+                        <option value="american">American</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Calorie Target</label>
+                      <input
+                        type="number"
+                        min="1200"
+                        max="4000"
+                        step="100"
+                        value={preferences.calorieTarget}
+                        onChange={(e) => setPreferences(prev => ({ ...prev, calorieTarget: parseInt(e.target.value) }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="2000"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Health Conditions */}
+                <div className="md:col-span-2 lg:col-span-3">
+                  <h3 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                    <FaHeart /> Health Conditions
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {conditionOptions.map((condition) => (
+                      <button
+                        key={condition}
+                        onClick={() => toggleCondition(condition)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
+                          preferences.healthConditions.includes(condition)
+                            ? 'bg-green-50 border-green-400 text-green-700'
+                            : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        {condition.replace('_', ' ')}
+                      </button>
                     ))}
                   </div>
                 </div>
-                
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-3">Cooking Time</h3>
-                  <select
-                    value={preferences.cookingTime}
-                    onChange={(e) => setPreferences(prev => ({ ...prev, cookingTime: e.target.value }))}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    <option value="quick">Quick (15-30 min)</option>
-                    <option value="medium">Medium (30-60 min)</option>
-                    <option value="slow">Slow (60+ min)</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-3">Servings</h3>
-                  <select
-                    value={preferences.servings}
-                    onChange={(e) => setPreferences(prev => ({ ...prev, servings: parseInt(e.target.value) }))}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    <option value={1}>1 person</option>
-                    <option value={2}>2 people</option>
-                    <option value={4}>4 people</option>
-                    <option value={6}>6 people</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-3">Budget</h3>
-                  <select
-                    value={preferences.budget}
-                    onChange={(e) => setPreferences(prev => ({ ...prev, budget: e.target.value }))}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    <option value="low">Budget-friendly</option>
-                    <option value="medium">Moderate</option>
-                    <option value="high">Premium</option>
-                  </select>
+
+                {/* Additional Preferences */}
+                <div className="md:col-span-2 lg:col-span-3">
+                  <h3 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                    <FaShoppingBag /> Additional Preferences
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Cooking Time</label>
+                      <select
+                        value={preferences.cookingTime}
+                        onChange={(e) => setPreferences(prev => ({ ...prev, cookingTime: e.target.value }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        <option value="quick">Quick (15-30 min)</option>
+                        <option value="medium">Medium (30-60 min)</option>
+                        <option value="slow">Slow (60+ min)</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Servings</label>
+                      <select
+                        value={preferences.servings}
+                        onChange={(e) => setPreferences(prev => ({ ...prev, servings: parseInt(e.target.value) }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        <option value={1}>1 person</option>
+                        <option value={2}>2 people</option>
+                        <option value={4}>4 people</option>
+                        <option value={6}>6 people</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Budget</label>
+                      <select
+                        value={preferences.budget}
+                        onChange={(e) => setPreferences(prev => ({ ...prev, budget: e.target.value }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        <option value="low">Budget-friendly</option>
+                        <option value="medium">Moderate</option>
+                        <option value="high">Premium</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>

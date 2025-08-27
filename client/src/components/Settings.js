@@ -5,7 +5,8 @@ import {
   FaDesktop, FaQuestionCircle, FaEdit, FaTrash, FaDownload, FaEye, 
   FaEyeSlash, FaPlus, FaTimes, FaCheck, FaExclamationTriangle,
   FaApple, FaGoogle, FaHeart, FaCalendarAlt, FaLanguage, FaPalette,
-  FaRuler, FaChartLine, FaRobot, FaBrain, FaHistory, FaTicketAlt
+  FaRuler, FaChartLine, FaRobot, FaBrain, FaHistory, FaTicketAlt,
+  FaArrowRight
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';

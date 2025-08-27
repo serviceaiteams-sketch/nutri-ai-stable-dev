@@ -1398,6 +1398,10 @@ const SystemTab = ({ system, onUpdate, loading }) => {
 // Help Tab Component
 const HelpTab = ({ loading }) => {
   const [activeSection, setActiveSection] = useState('faq');
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
 
   const faqs = [
     {
@@ -1417,6 +1421,112 @@ const HelpTab = ({ loading }) => {
       answer: "We offer Silver ($9.99), Gold ($29.99), and Platinum ($49.99) plans with different feature sets."
     }
   ];
+
+  // Chat functionality
+  const startChat = () => {
+    setIsChatOpen(true);
+    // Add welcome message
+    const welcomeMessage = {
+      id: Date.now(),
+      type: 'bot',
+      message: "Hello! I'm NutriAI Assistant. How can I help you today? I can assist with nutrition advice, app features, health tracking, and more. What would you like to know?",
+      timestamp: new Date().toISOString()
+    };
+    setChatMessages([welcomeMessage]);
+  };
+
+  const closeChat = () => {
+    setIsChatOpen(false);
+    setChatMessages([]);
+    setChatInput('');
+  };
+
+  const sendMessage = async () => {
+    if (!chatInput.trim()) return;
+
+    const userMessage = {
+      id: Date.now(),
+      type: 'user',
+      message: chatInput.trim(),
+      timestamp: new Date().toISOString()
+    };
+
+    setChatMessages(prev => [...prev, userMessage]);
+    setChatInput('');
+    setIsTyping(true);
+
+    // Simulate AI response
+    setTimeout(() => {
+      const aiResponse = generateAIResponse(chatInput.trim());
+      const botMessage = {
+        id: Date.now() + 1,
+        type: 'bot',
+        message: aiResponse,
+        timestamp: new Date().toISOString()
+      };
+      setChatMessages(prev => [...prev, botMessage]);
+      setIsTyping(false);
+    }, 1000 + Math.random() * 2000); // Random delay between 1-3 seconds
+  };
+
+  const generateAIResponse = (userMessage) => {
+    const message = userMessage.toLowerCase();
+    
+    // Nutrition-related responses
+    if (message.includes('nutrition') || message.includes('diet') || message.includes('food')) {
+      const responses = [
+        "Great question about nutrition! A balanced diet should include proteins, healthy fats, complex carbohydrates, and plenty of fruits and vegetables. What specific nutrition topic would you like to explore?",
+        "Nutrition is key to health! I recommend focusing on whole foods, staying hydrated, and eating a variety of colorful fruits and vegetables. Do you have specific dietary goals?",
+        "For optimal nutrition, aim for 3 balanced meals per day with healthy snacks. Include lean proteins, whole grains, and healthy fats. What's your current nutrition goal?"
+      ];
+      return responses[Math.floor(Math.random() * responses.length)];
+    }
+    
+    // App feature responses
+    if (message.includes('app') || message.includes('feature') || message.includes('how to')) {
+      const responses = [
+        "I'd be happy to help you with app features! NutriAI offers food recognition, meal tracking, health analysis, and personalized recommendations. What specific feature would you like to learn about?",
+        "Our app has many powerful features! You can track meals, analyze nutrition, get AI-powered recommendations, and monitor your health progress. Which feature interests you most?",
+        "Let me guide you through our app features! We have food recognition, meal planning, health tracking, and AI-powered insights. What would you like to explore first?"
+      ];
+      return responses[Math.floor(Math.random() * responses.length)];
+    }
+    
+    // Health tracking responses
+    if (message.includes('health') || message.includes('track') || message.includes('monitor')) {
+      const responses = [
+        "Health tracking is essential! You can monitor your nutrition, water intake, exercise, and health metrics in our app. What health aspect would you like to focus on?",
+        "Great question about health tracking! We offer comprehensive monitoring for nutrition, fitness, and wellness. You can set goals and track progress over time. What's your health priority?",
+        "Health tracking helps you stay accountable! Monitor your daily nutrition, exercise routine, and wellness metrics. What health goal are you working towards?"
+      ];
+      return responses[Math.floor(Math.random() * responses.length)];
+    }
+    
+    // General help responses
+    if (message.includes('help') || message.includes('support') || message.includes('problem')) {
+      const responses = [
+        "I'm here to help! I can assist with nutrition advice, app features, health tracking, and troubleshooting. What specific issue are you facing?",
+        "No problem, I'm here to support you! Whether it's nutrition questions, app features, or health guidance, I'm ready to help. What do you need assistance with?",
+        "I'm your NutriAI assistant and I'm here to help! I can provide nutrition advice, explain app features, and guide you through health tracking. What would you like to know?"
+      ];
+      return responses[Math.floor(Math.random() * responses.length)];
+    }
+    
+    // Default response
+    const defaultResponses = [
+      "That's an interesting question! I'm here to help with nutrition, health tracking, app features, and wellness advice. Could you tell me more about what you're looking for?",
+      "Great question! I'm your NutriAI assistant and I can help with nutrition guidance, health tracking, app features, and wellness tips. What specific area would you like to explore?",
+      "I'd love to help you with that! I'm knowledgeable about nutrition, health tracking, app features, and wellness. What would you like to learn more about?"
+    ];
+    return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
 
   return (
     <motion.div
@@ -1468,7 +1578,10 @@ const HelpTab = ({ loading }) => {
             <div className="p-4 bg-green-50 rounded-lg">
               <h4 className="font-medium text-green-900 mb-2">Live Chat</h4>
               <p className="text-green-700">Available 9 AM - 6 PM EST</p>
-              <button className="mt-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+              <button 
+                onClick={startChat}
+                className="mt-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
+              >
                 Start Chat
               </button>
             </div>
@@ -1522,6 +1635,110 @@ const HelpTab = ({ loading }) => {
           </div>
         )}
       </div>
+
+      {/* Live Chat Interface */}
+      <AnimatePresence>
+        {isChatOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={(e) => e.target === e.currentTarget && closeChat()}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[600px] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Chat Header */}
+              <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-4 rounded-t-2xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                      <FaRobot className="text-white text-lg" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">NutriAI Assistant</h3>
+                      <p className="text-sm text-green-100">Live Chat Support</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={closeChat}
+                    className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center hover:bg-opacity-30 transition-all duration-200"
+                  >
+                    <FaTimes className="text-white text-sm" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Chat Messages */}
+              <div className="flex-1 p-4 overflow-y-auto space-y-4 max-h-[400px]">
+                {chatMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[80%] p-3 rounded-2xl ${
+                        msg.type === 'user'
+                          ? 'bg-green-500 text-white rounded-br-md'
+                          : 'bg-gray-100 text-gray-800 rounded-bl-md'
+                      }`}
+                    >
+                      <p className="text-sm">{msg.message}</p>
+                      <p className={`text-xs mt-1 ${
+                        msg.type === 'user' ? 'text-green-100' : 'text-gray-500'
+                      }`}>
+                        {new Date(msg.timestamp).toLocaleTimeString([], { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Typing Indicator */}
+                {isTyping && (
+                  <div className="flex justify-start">
+                    <div className="bg-gray-100 text-gray-800 p-3 rounded-2xl rounded-bl-md">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Chat Input */}
+              <div className="p-4 border-t border-gray-200">
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Type your message..."
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                  <button
+                    onClick={sendMessage}
+                    disabled={!chatInput.trim()}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                  >
+                    <FaArrowRight className="text-sm" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
